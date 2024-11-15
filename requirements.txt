@@ -1,0 +1,9 @@
+streamlit
+tensorflow
+joblib
+pandas
+geopandas
+folium
+matplotlib
+hdbscan
+scikit-learn

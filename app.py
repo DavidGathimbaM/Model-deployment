@@ -62,8 +62,12 @@ def main():
 
         # Make predictions using the MLP model
         predictions = mlp_model.predict(X_scaled)
+        
         county_data['Electricity_Predicted'] = (predictions > 0.5).astype(int)
 
+        # Debugging: Ensure column exists
+        st.write("Updated county_data with Electricity_Predicted column:")
+        st.dataframe(county_data)
         # Display predictions
         st.write("Predictions for Selected County:")
         st.dataframe(county_data[['Latitude', 'Longitude', 'Electricity_Predicted']])

@@ -5,6 +5,9 @@ import folium
 from tensorflow.keras.models import load_model
 from sklearn.preprocessing import StandardScaler
 import os
+import warnings
+warnings.filterwarnings("ignore", category=SyntaxWarning)
+
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 # Load Models and Scalers

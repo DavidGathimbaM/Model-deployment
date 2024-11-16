@@ -37,21 +37,39 @@ def main():
     # Rename latitude and longitude columns for st.map compatibility
     county_data = county_data.rename(columns={'Latitude': 'latitude', 'Longitude': 'longitude'})
 
-    # Inside the main function, after filtering by county
-    st.write("Available columns in county_data:", county_data.columns.tolist())
-
-
+    
     st.write(f"Showing data for {selected_county}")
     st.map(county_data[['latitude', 'longitude']])
 
-    # Show Predictions
-    X_numeric = county_data[['Pop_Density_2020', 'Wind_Speed', 'Latitude', 'Longitude', 'Grid_Value']]
-    X_scaled = scaler.transform(X_numeric)
-    predictions = mlp_model.predict(X_scaled)
-    county_data['Electricity_Predicted'] = (predictions > 0.5).astype(int)
+    # List of required columns for the MLP model
+    required_columns = ['Pop_Density_2020', 'Wind_Speed', 'Latitude', 'Longitude', 'Grid_Value']
+    # Check if all required columns exist
+    missing_columns = [col for col in required_columns if col not in county_data.columns]
+    if missing_columns:
+    # Display an error in Streamlit if columns are missing
+        st.error(f"The following required columns are missing: {missing_columns}")
+    else:
+    # Select features if all required columns are present
+        X_numeric = county_data[required_columns]
 
-    st.write("Predictions for Selected County:")
-    st.dataframe(county_data[['Latitude', 'Longitude', 'Electricity_Predicted']])
+        # Standardize features using the scaler
+        X_scaled = scaler.transform(X_numeric)
+
+        # Make predictions using the MLP model
+        predictions = mlp_model.predict(X_scaled)
+        county_data['Electricity_Predicted'] = (predictions > 0.5).astype(int)
+
+        # Display predictions
+        st.write("Predictions for Selected County:")
+        st.dataframe(county_data[['Latitude', 'Longitude', 'Electricity_Predicted']])
+    # # Show Predictions
+    # X_numeric = county_data[['Pop_Density_2020', 'Wind_Speed', 'Latitude', 'Longitude', 'Grid_Value']]
+    # X_scaled = scaler.transform(X_numeric)
+    # predictions = mlp_model.predict(X_scaled)
+    # county_data['Electricity_Predicted'] = (predictions > 0.5).astype(int)
+
+    # st.write("Predictions for Selected County:")
+    # st.dataframe(county_data[['Latitude', 'Longitude', 'Electricity_Predicted']])
 
     # Visualization with Folium
     st.write("Electrification Map:")

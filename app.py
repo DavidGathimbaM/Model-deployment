@@ -85,7 +85,7 @@ def main():
 
     # Visualization with Folium
     st.write("Electrification Map:")
-    folium_map = folium.Map(location=[df['Latitude'].mean(), df['Longitude'].mean()], zoom_start=6)
+    folium_map = folium.Map(location=[df['latitude'].mean(), df['longitude'].mean()], zoom_start=6)
     for _, row in county_data.iterrows():
         color = 'green' if row['Electricity_Predicted'] == 1 else 'red'
         folium.CircleMarker(

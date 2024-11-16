@@ -46,6 +46,8 @@ def main():
     st.write(f"Showing data for {selected_county}")
     st.map(county_data[['latitude', 'longitude']])
 
+    st.write("Columns in county_data before prediction:", county_data.columns.tolist())
+
     # List of required columns for the MLP model
     required_columns = ['Pop_Density_2020', 'Wind_Speed', 'Latitude', 'Longitude', 'Grid_Value']
     # Check if all required columns exist
@@ -53,6 +55,7 @@ def main():
     if missing_columns:
     # Display an error in Streamlit if columns are missing
         st.error(f"The following required columns are missing: {missing_columns}")
+        st.stop()
     else:
     # Select features if all required columns are present
         X_numeric = county_data[required_columns]

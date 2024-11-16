@@ -34,9 +34,12 @@ def main():
 
     # Filter data for the selected county
     county_data = df[df['Income_Distribution'] == selected_county]
+    # Rename latitude and longitude columns for st.map compatibility
+    county_data = county_data.rename(columns={'Latitude': 'latitude', 'Longitude': 'longitude'})
+
 
     st.write(f"Showing data for {selected_county}")
-    st.map(county_data[['Latitude', 'Longitude']])
+    st.map(county_data[['latitude', 'longitude']])
 
     # Show Predictions
     X_numeric = county_data[['Pop_Density_2020', 'Wind_Speed', 'Latitude', 'Longitude', 'Grid_Value']]

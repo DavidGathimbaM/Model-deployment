@@ -37,6 +37,9 @@ def main():
     # Rename latitude and longitude columns for st.map compatibility
     county_data = county_data.rename(columns={'Latitude': 'latitude', 'Longitude': 'longitude'})
 
+    # Inside the main function, after filtering by county
+    st.write("Available columns in county_data:", county_data.columns.tolist())
+
 
     st.write(f"Showing data for {selected_county}")
     st.map(county_data[['latitude', 'longitude']])

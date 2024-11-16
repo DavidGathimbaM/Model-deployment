@@ -73,7 +73,7 @@ def main():
         st.dataframe(county_data)
         # Display predictions
         st.write("Predictions for Selected County:")
-        st.dataframe(county_data[['Latitude', 'Longitude', 'Electricity_Predicted']])
+        st.dataframe(county_data[['latitude', 'longitude', 'Electricity_Predicted']])
     # # Show Predictions
     # X_numeric = county_data[['Pop_Density_2020', 'Wind_Speed', 'Latitude', 'Longitude', 'Grid_Value']]
     # X_scaled = scaler.transform(X_numeric)

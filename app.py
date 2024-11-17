@@ -68,6 +68,11 @@ def main():
         # Standardize features using the scaler
         X_scaled = scaler.transform(X_numeric)
 
+        # Debugging: Check and align features with the scaler
+        required_features = scaler.feature_names_in_  # Features used during training
+        st.write("Features seen during scaler fitting:", required_features)
+        st.write("Current features passed to scaler:", X_numeric.columns.tolist())
+
         # Make predictions using the MLP model
         predictions = mlp_model.predict(X_scaled)
         

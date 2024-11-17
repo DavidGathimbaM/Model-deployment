@@ -46,7 +46,7 @@ def main():
 
     # Rename latitude and longitude columns for st.map compatibility
     # Ensure column names are lowercase for st.map
-    county_data_map = df[df['Latitude', 'Longitude']==selected_county]
+    # county_data_map = df[df['Latitude', 'Longitude']==selected_county]
     county_data_map = county_data.rename(columns={'Latitude': 'latitude', 'Longitude': 'longitude'})
 
 

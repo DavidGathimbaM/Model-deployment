@@ -51,7 +51,7 @@ def main():
     X_scaled = scaler.transform(X_numeric)
 
     # Extract categorical feature for embedding
-    county_encoded = county_data['Income_Distribution_encoded'].values
+    county_encoded = county_data['Income_Distribution_encoded'].values.reshape(-1, 1)
 
     try:
         # HDBSCAN clustering insights
@@ -67,7 +67,7 @@ def main():
         st.dataframe(county_data[['Cluster_Labels', 'Pop_Density_2020']])
 
         # MLP model predictions
-        predictions = mlp_model.predict([X_scaled, county_encoded])
+        predictions = mlp_model.predict([X_scaled, county_encoded])  # Pass both numeric and categorical inputs
         county_data['Electricity_Predicted'] = (predictions > 0.5).astype(int)
 
         # Display predictions

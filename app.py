@@ -55,8 +55,13 @@ def main():
 
     try:
         # HDBSCAN clustering insights
-        cluster_labels = hdbscan_model.labels_
-        county_data['Cluster_Labels'] = cluster_labels
+        if len(hdbscan_model.labels_) == len(df):
+            # Match labels to the dataset
+            df['Cluster_Labels'] = hdbscan_model.labels_
+            county_data['Cluster_Labels'] = df.loc[county_data.index, 'Cluster_Labels']
+        else:
+            st.warning("HDBSCAN model does not match the current dataset size. Clustering insights will be skipped.")
+            county_data['Cluster_Labels'] = -1  # Assign -1 for unknown clusters
 
         st.write("HDBSCAN Clustering Insights:")
         st.dataframe(county_data[['Cluster_Labels', 'Pop_Density_2020']])

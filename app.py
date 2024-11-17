@@ -51,11 +51,11 @@ def main():
 
     
     st.write(f"Showing data for {selected_county}")
-# debug
+    # debug
     st.write("Columns in county_data:", county_data.columns.tolist())
     if 'Latitude' not in county_data.columns or 'Longitude' not in county_data.columns:
-    st.error("Latitude and Longitude columns are missing from the dataset. Cannot display map.")
-    st.stop()
+        st.error("Latitude and Longitude columns are missing from the dataset. Cannot display map.")
+        st.stop()
 
 
     st.map(county_data_map[['latitude', 'longitude']])

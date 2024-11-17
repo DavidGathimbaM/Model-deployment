@@ -37,8 +37,13 @@ def main():
     counties = df['Income_Distribution'].unique()
     selected_county = st.sidebar.selectbox("Select a County", counties)
 
+    
     # Filter data for the selected county
     county_data = df[df['Income_Distribution'] == selected_county]
+
+    # Strip whitespace from column names
+    county_data.columns = county_data.columns.str.strip()
+
     # Rename latitude and longitude columns for st.map compatibility
     county_data = county_data.rename(columns={'Latitude': 'latitude', 'Longitude': 'longitude'})
 

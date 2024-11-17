@@ -234,9 +234,16 @@ def main():
         st.write("Shape of X_numeric_scaled:", X_numeric_scaled.shape)
         st.write("Shape of X_county:", X_county.shape)
 
-        # Make predictions with two inputs
-        predictions = mlp_model.predict([X_numeric_scaled, X_county])
-        county_data['Electricity_Predicted'] = (predictions > 0.5).astype(int)
+        # # Make predictions with two inputs
+        # predictions = mlp_model.predict([X_numeric_scaled, X_county])
+        # county_data['Electricity_Predicted'] = (predictions > 0.5).astype(int)
+
+        try:
+            predictions = mlp_model.predict([X_numeric_scaled, X_county])
+            county_data['Electricity_Predicted'] = (predictions > 0.5).astype(int)
+        except Exception as e:
+            st.error(f"Error during prediction: {e}")
+        return
 
         # # Debugging: Ensure column exists
         # st.write("Updated county_data with Electricity_Predicted column:")

@@ -10,10 +10,9 @@ import warnings
 
 # Suppress TensorFlow and general warnings
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # Suppress TensorFlow warnings
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"  # Disable GPU for TensorFlow
 warnings.filterwarnings("ignore", category=SyntaxWarning)
 
-# Function to load models and scalers
+# Load models and scalers
 @st.cache_resource
 def load_models():
     try:
@@ -27,7 +26,7 @@ def load_models():
         st.error(f"Error loading models or scalers: {e}")
         st.stop()
 
-# Function to load dataset
+# Load dataset
 @st.cache_data
 def load_data():
     try:
@@ -60,13 +59,14 @@ def main():
         st.error(f"No data available for the selected county: {selected_county}")
         st.stop()
 
-    # Debugging: Validate columns
-    st.write("Columns in county_data:", county_data.columns.tolist())
+    # Ensure Latitude and Longitude columns exist
+    if 'Latitude' not in df.columns or 'Longitude' not in df.columns:
+        st.error("Latitude or Longitude columns are missing. Cannot render the map.")
+        st.stop()
 
     # HDBSCAN clustering
-    st.write("Applying HDBSCAN clustering...")
-    pca_features = county_data[['PCA_Component_1', 'PCA_Component_2']]
     try:
+        pca_features = county_data[['PCA_Component_1', 'PCA_Component_2']]
         clusters = hdbscan_model.fit_predict(pca_features)
         county_data['Cluster'] = clusters
         county_data['Stability_Score'] = hdbscan_model.probabilities_
@@ -74,24 +74,21 @@ def main():
         st.error(f"Error applying HDBSCAN clustering: {e}")
         st.stop()
 
-    # Debugging: HDBSCAN output
+    # Debugging: HDBSCAN results
     st.write("HDBSCAN clustering results:")
     st.dataframe(county_data[['Cluster', 'Stability_Score']])
 
-    # Define numeric features for MLP model
+    # Prepare inputs for the MLP model
     numeric_features = [
         'Pop_Density_2020', 'Wind_Speed', 'Latitude', 'Longitude', 'Grid_Value',
         'Cluster', 'Stability_Score', 'Income_Distribution_encoded',
         'Cluster_Mean_Pop_Density', 'Cluster_Mean_Wind_Speed'
     ]
-
-    # Ensure required columns exist
     missing_features = [feature for feature in numeric_features if feature not in county_data.columns]
     if missing_features:
         st.error(f"Missing features: {missing_features}")
         st.stop()
 
-    # Prepare inputs for the MLP model
     X_numeric = county_data[numeric_features]
     try:
         X_numeric_scaled = scaler.transform(X_numeric)
@@ -100,22 +97,12 @@ def main():
         st.stop()
 
     X_county = county_data['Income_Distribution_encoded']
-
-    # Debugging: Verify input shapes
-    st.write("Shape of numeric features (scaled):", X_numeric_scaled.shape)
-    st.write("Shape of county categorical input:", X_county.shape)
-
-    # Make predictions
     try:
         predictions = mlp_model.predict([X_numeric_scaled, X_county])
         county_data['Electricity_Predicted'] = (predictions > 0.5).astype(int)
     except Exception as e:
         st.error(f"Error making predictions: {e}")
         st.stop()
-
-    # Debugging: Display predictions
-    st.write("Updated county_data with predictions:")
-    st.dataframe(county_data[['Latitude', 'Longitude', 'Electricity_Predicted']])
 
     # Visualization with Folium
     st.write("Electrification Map:")

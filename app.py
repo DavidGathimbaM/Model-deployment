@@ -133,6 +133,7 @@ import warnings
 warnings.filterwarnings("ignore", category=SyntaxWarning)
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 # Load Models and Scalers
 @st.cache_resource
@@ -141,6 +142,7 @@ def load_models():
     scaler = joblib.load("models/scaler.pkl")
     label_encoder = joblib.load("models/label_encoder.pkl")
     hdbscan_model = joblib.load("models/hdbscan_model.pkl")
+    mlp_model.compile(optimizer="adam", loss="binary_crossentropy", metrics=["accuracy"])
     return mlp_model, scaler, label_encoder, hdbscan_model
 
 # Load the dataset

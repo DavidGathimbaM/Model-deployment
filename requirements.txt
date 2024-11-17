@@ -2,7 +2,7 @@ streamlit
 tensorflow
 numpy
 pandas
-scikit-learn==1.5.1
+scikit-learn==1.2.2
 streamlit-folium
 folium
 hdbscan

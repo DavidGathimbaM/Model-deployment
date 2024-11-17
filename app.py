@@ -5,7 +5,7 @@ import folium
 from streamlit_folium import st_folium
 from tensorflow.keras.models import load_model
 from sklearn.preprocessing import StandardScaler
-import hdbscan  # Importing HDBSCAN
+import hdbscan
 import os
 
 # Ensure CUDA is not used
@@ -41,26 +41,15 @@ def main():
     # Filter data for the selected county
     county_data = df[df['Income_Distribution'] == selected_county]
 
-    # Ensure latitude and longitude columns are properly named for visualization
-    county_data_map = county_data.rename(columns={'Latitude': 'latitude', 'Longitude': 'longitude'})
-
-    st.write(f"Showing data for {selected_county}")
-    if 'latitude' not in county_data_map.columns or 'longitude' not in county_data_map.columns:
-        st.error("Latitude and Longitude columns are missing. Cannot display map.")
-        st.stop()
-
-    # Map visualization
-    st.map(county_data_map[['latitude', 'longitude']])
-
-    # Debugging: Check required columns for prediction
+    # Check for missing columns
     required_columns = [
         'Pop_Density_2020', 'Wind_Speed', 'Latitude', 'Longitude', 'Grid_Value',
         'Cluster', 'Cluster_Mean_Pop_Density', 'Cluster_Mean_Wind_Speed',
-        'Income_Distribution_encoded'
+        'Income_Distribution_encoded', 'Stability_Score'
     ]
     missing_columns = [col for col in required_columns if col not in county_data.columns]
     if missing_columns:
-        st.error(f"Missing columns for prediction: {missing_columns}")
+        st.error(f"The following required columns are missing: {missing_columns}")
         st.stop()
 
     # Extract numeric features for scaling and prediction
@@ -72,7 +61,7 @@ def main():
     cluster_labels = hdbscan_model.fit_predict(X_scaled)
     county_data['Cluster_Labels'] = cluster_labels
     st.write("Cluster Labels for Selected County:")
-    st.dataframe(county_data[['latitude', 'longitude', 'Cluster_Labels']])
+    st.dataframe(county_data[['Latitude', 'Longitude', 'Cluster_Labels']])
 
     # MLP predictions
     county_embedding = county_data['Income_Distribution_encoded'].values.reshape(-1, 1)

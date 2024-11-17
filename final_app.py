@@ -64,15 +64,15 @@ def main():
         st.error("Latitude or Longitude columns are missing. Cannot render the map.")
         st.stop()
 
-    # Apply HDBSCAN clustering
-    try:
-        pca_features = county_data[['PCA_Component_1', 'PCA_Component_2']]
-        clusters = hdbscan_model.fit_predict(pca_features)
-        county_data['Cluster'] = clusters
-        county_data['Stability_Score'] = hdbscan_model.probabilities_
-    except Exception as e:
-        st.error(f"Error applying HDBSCAN clustering: {e}")
-        st.stop()
+    # # Apply HDBSCAN clustering
+    # try:
+    #     pca_features = county_data[['PCA_Component_1', 'PCA_Component_2']]
+    #     clusters = hdbscan_model.fit_predict(pca_features)
+    #     county_data['Cluster'] = clusters
+    #     county_data['Stability_Score'] = hdbscan_model.probabilities_
+    # except Exception as e:
+    #     st.error(f"Error applying HDBSCAN clustering: {e}")
+    #     st.stop()
 
     # Prepare inputs for the MLP model
     numeric_features = [

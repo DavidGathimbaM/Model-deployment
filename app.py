@@ -3,7 +3,7 @@ import pandas as pd
 import joblib
 import tensorflow as tf
 from tensorflow.keras.models import load_model
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, LabelEncoder
 import hdbscan
 import folium
 from streamlit_folium import st_folium
@@ -13,8 +13,9 @@ from streamlit_folium import st_folium
 def load_models():
     mlp_model = load_model("models/mlp_model.h5")
     scaler = joblib.load("models/scaler.pkl")
+    label_encoder = joblib.load("models/label_encoder.pkl")
     hdbscan_model = joblib.load("models/hdbscan_model.pkl")
-    return mlp_model, scaler, hdbscan_model
+    return mlp_model, scaler, label_encoder, hdbscan_model
 
 @st.cache_data
 def load_data():
@@ -26,7 +27,7 @@ def main():
     st.write("Analyze electrification data and clustering insights.")
 
     # Load models and data
-    mlp_model, scaler, hdbscan_model = load_models()
+    mlp_model, scaler, label_encoder, hdbscan_model = load_models()
     df = load_data()
 
     # Sidebar selection
@@ -35,6 +36,15 @@ def main():
 
     # Filter data for the selected county
     county_data = df[df['Income_Distribution'] == selected_county].copy()
+
+    # Label encoding for selected county
+    if 'Income_Distribution_encoded' not in df.columns:
+        st.error("The dataset does not contain the encoded column for Income Distribution.")
+        st.stop()
+
+    county_data['Income_Distribution_encoded'] = label_encoder.transform(
+        county_data['Income_Distribution']
+    )
 
     # Ensure required columns exist
     required_columns = [
@@ -50,7 +60,7 @@ def main():
     X_numeric = county_data[required_columns]
     X_scaled = scaler.transform(X_numeric)
 
-    # Extract categorical feature for embedding
+    # Extract encoded feature for embedding
     county_encoded = county_data['Income_Distribution_encoded'].values.reshape(-1, 1)
 
     try:

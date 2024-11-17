@@ -1,138 +1,99 @@
 import streamlit as st
-import numpy as np
+import gdown
 import pandas as pd
 import joblib
-import folium
-from tensorflow.keras.models import load_model
-from sklearn.preprocessing import StandardScaler
-import os
-from streamlit_folium import st_folium
-import warnings
+import matplotlib.pyplot as plt
 
-# Suppress warnings and configure TensorFlow
-warnings.filterwarnings("ignore", category=SyntaxWarning)
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"  # Disable GPU usage for TensorFlow
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # Suppress TensorFlow debug logs
+# Set Google Drive file ID for the CSV file
+file_id = 'YOUR_FILE_ID'
+download_url = f'https://drive.google.com/uc?id={file_id}'
+output_file = 'data.csv'
 
-# Load Models and Scalers
-@st.cache_resource
-def load_models():
-    try:
-        mlp_model = load_model("models/mlp_model.h5")
-        scaler = joblib.load("models/scaler.pkl")
-        label_encoder = joblib.load("models/label_encoder.pkl")
-        hdbscan_model = joblib.load("models/hdbscan_model.pkl")
-        return mlp_model, scaler, label_encoder, hdbscan_model
-    except Exception as e:
-        st.error(f"Error loading models: {e}")
-        st.stop()
+# Load pre-trained models
+scaler = joblib.load('scaler.pkl')
+pca = joblib.load('pca.pkl')
+hdbscan_model = joblib.load('hdbscan_model.pkl')
 
-# Load the dataset
+@st.cache_data  # Cache the data download and processing
+def download_and_load_data(url):
+    # Download file from Google Drive
+    gdown.download(url, output_file, quiet=False)
+    # Load CSV data into a DataFrame
+    df = pd.read_csv(output_file)
+    return df
+
 @st.cache_data
-def load_data():
-    try:
-        return pd.read_csv("data/final_df.csv")
-    except Exception as e:
-        st.error(f"Error loading dataset: {e}")
-        st.stop()
+def apply_models(df):
+    # Preprocess: Select required numeric columns and one-hot encode Income_Distribution
+    income_columns = [col for col in scaler.feature_names_in_ if col.startswith("Income_")]
+    numeric_columns = ['Pop_Density_2020', 'Wind_Speed', 'Latitude', 'Longitude', 'Grid_Value']
 
-# Main App
-def main():
-    st.title("Electrification Planning in Kenya")
-    st.write("Explore electrification recommendations by county.")
+    # Ensure all expected columns are present
+    for col in income_columns:
+        if col not in df.columns:
+            df[col] = 0  # Add missing columns with default value 0
 
-    # Load models and data
-    mlp_model, scaler, label_encoder, hdbscan_model = load_models()
-    df = load_data()
+    # Combine numeric and one-hot encoded columns
+    clustering_data = df[numeric_columns + income_columns]
 
-    # Sidebar: User County Selection
-    counties = df['Income_Distribution'].unique()
-    selected_county = st.sidebar.selectbox("Select a County", counties)
+    # Scale the numeric data using the pre-trained scaler
+    clustering_data_scaled = scaler.transform(clustering_data)
+
+    # Reduce dimensionality using pre-trained PCA
+    clustering_data_reduced = pca.transform(clustering_data_scaled)
+    df['PCA_Component_1'] = clustering_data_reduced[:, 0]
+    df['PCA_Component_2'] = clustering_data_reduced[:, 1]
+
+    # Apply pre-trained HDBSCAN model for clustering
+    clusters = hdbscan_model.fit_predict(clustering_data_reduced)
+    df['Cluster'] = clusters
+    df['Stability_Score'] = hdbscan_model.probabilities_
+
+    return df, clusters
+
+# Streamlit app interface
+st.title("Electrification Planning and Clustering Insights")
+st.write("This app downloads a large dataset from Google Drive, processes it using pre-trained models, and provides electrification insights.")
+
+# Step 1: Download and load data
+st.write("Loading and processing data...")
+try:
+    # Load data from Google Drive
+    data = download_and_load_data(download_url)
+    st.write("Data loaded successfully!")
+
+    # Step 2: Apply pre-trained models
+    data, clusters = apply_models(data)
+    st.write("Data processed and clustered successfully!")
+
+    # Step 3: Dropdown selection for Income_Distribution
+    st.write("Select a region (county):")
+    region = st.selectbox("County", options=data['Income_Distribution'].unique())
 
     # Filter data for the selected county
-    county_data = df[df['Income_Distribution'] == selected_county]
+    filtered_data = data[data['Income_Distribution'] == region]
 
-    # Validate data availability
-    if county_data.empty:
-        st.error(f"No data available for the selected county: {selected_county}")
-        st.stop()
+    # Display clustering results
+    st.write("Clustering Results for the Selected County:")
+    st.write(filtered_data[['Latitude', 'Longitude', 'Pop_Density_2020', 'Cluster', 'Stability_Score']])
 
-    # Strip whitespace from column names
-    county_data.columns = county_data.columns.str.strip()
+    # Visualize clusters
+    st.write("Cluster Visualization:")
+    fig, ax = plt.subplots(figsize=(10, 6))
+    scatter = ax.scatter(data['PCA_Component_1'], data['PCA_Component_2'], c=clusters, cmap='viridis', s=5)
+    plt.colorbar(scatter, label='Cluster')
+    plt.xlabel('PCA Component 1')
+    plt.ylabel('PCA Component 2')
+    plt.title('HDBSCAN Clustering Results')
+    st.pyplot(fig)
 
-    # Check for Latitude and Longitude columns
-    if 'Latitude' not in county_data.columns or 'Longitude' not in county_data.columns:
-        st.error("Latitude and Longitude columns are missing from the dataset. Cannot display map.")
-        st.stop()
+    # Insights based on clustering
+    st.write("**Insights:**")
+    st.write("""
+    - Low-density clusters with suitable wind conditions are good candidates for wind microgrids.
+    - High-density clusters near existing grids may benefit from grid extensions.
+    - Noise points (-1) may represent isolated or unique regions requiring further analysis.
+    """)
 
-    # Rename latitude and longitude for st.map compatibility
-    county_data_map = county_data.rename(columns={'Latitude': 'latitude', 'Longitude': 'longitude'})
-
-    # Display map with latitude and longitude
-    st.map(county_data_map[['latitude', 'longitude']])
-
-    # Required columns for MLP prediction
-    required_columns = [
-        'Pop_Density_2020', 'Wind_Speed', 'Latitude', 'Longitude', 'Grid_Value',
-        'Cluster', 'Cluster_Mean_Pop_Density', 'Cluster_Mean_Wind_Speed', 'Income_Distribution_encoded'
-    ]
-
-    # Check for missing columns
-    missing_columns = [col for col in required_columns if col not in county_data.columns]
-    if missing_columns:
-        st.error(f"The following required columns are missing: {missing_columns}")
-        st.stop()
-
-    # Prepare numeric features for prediction
-    X_numeric = county_data[required_columns].copy()
-
-    # Align features with the scaler
-    if hasattr(scaler, 'feature_names_in_'):
-        required_features = scaler.feature_names_in_  # Features used during training
-    else:
-        required_features = required_columns  # Fallback to required columns if attribute is missing
-
-    # Handle missing features for scaler
-    for feature in required_features:
-        if feature not in X_numeric.columns:
-            X_numeric[feature] = 0  # Add missing features as zeros
-
-    # Ensure correct feature order
-    X_numeric = X_numeric[required_features]
-
-    # Standardize features
-    X_numeric_scaled = scaler.transform(X_numeric)
-
-    # Prepare encoded categorical features
-    X_county_encoded = county_data['Income_Distribution_encoded'].values.reshape(-1, 1)
-
-    # Debugging: Print shapes before prediction
-    st.write("Debugging: Input Shapes")
-    st.write(f"X_numeric_scaled shape: {X_numeric_scaled.shape}")
-    st.write(f"X_county_encoded shape: {X_county_encoded.shape}")
-
-    # Make predictions with the correct input format
-    try:
-        predictions = mlp_model.predict([X_numeric_scaled, X_county_encoded])
-        county_data.loc[:, 'Electricity_Predicted'] = (predictions > 0.5).astype(int)
-    except Exception as e:
-        st.error(f"Error during prediction: {e}")
-        st.stop()
-
-    # Visualization with Folium
-    st.write("Electrification Map:")
-    folium_map = folium.Map(location=[county_data['Latitude'].mean(), county_data['Longitude'].mean()], zoom_start=8)
-    for _, row in county_data.iterrows():
-        color = 'green' if row['Electricity_Predicted'] == 1 else 'red'
-        folium.CircleMarker(
-            location=[row['Latitude'], row['Longitude']],
-            radius=5,
-            color=color,
-            fill=True,
-            fill_opacity=0.7,
-            popup=f"Prediction: {'Electricity' if row['Electricity_Predicted'] == 1 else 'No Electricity'}"
-        ).add_to(folium_map)
-    st_folium(folium_map, width=700)
-
-if __name__ == "__main__":
-    main()
+except Exception as e:
+    st.write("Error loading or processing data:", e)

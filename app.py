@@ -84,27 +84,34 @@ def main():
         st.stop()
 
     # Prepare numeric features for prediction
-    X_numeric = county_data[required_columns]
+    X_numeric = county_data[required_columns].copy()
+
+    # Align features with the scaler
+    if hasattr(scaler, 'feature_names_in_'):
+        required_features = scaler.feature_names_in_  # Features used during training
+    else:
+        required_features = required_columns  # Fallback to required columns if attribute is missing
 
     # Handle missing features for scaler
-    X_numeric = X_numeric.copy()  # Avoid SettingWithCopyWarning
-    if hasattr(scaler, 'feature_names_in_'):
-        required_features = scaler.feature_names_in_
-    else:
-        required_features = required_columns
-
     for feature in required_features:
         if feature not in X_numeric.columns:
-            X_numeric[feature] = 0
+            X_numeric[feature] = 0  # Add missing features as zeros
 
-    # Align and scale features
+    # Ensure correct feature order
     X_numeric = X_numeric[required_features]
+
+    # Standardize features
     X_numeric_scaled = scaler.transform(X_numeric)
 
     # Prepare encoded categorical features
     X_county_encoded = county_data['Income_Distribution_encoded'].values.reshape(-1, 1)
 
-    # Make predictions
+    # Debugging: Print shapes before prediction
+    st.write("Debugging: Input Shapes")
+    st.write(f"X_numeric_scaled shape: {X_numeric_scaled.shape}")
+    st.write(f"X_county_encoded shape: {X_county_encoded.shape}")
+
+    # Make predictions with the correct input format
     try:
         predictions = mlp_model.predict([X_numeric_scaled, X_county_encoded])
         county_data.loc[:, 'Electricity_Predicted'] = (predictions > 0.5).astype(int)

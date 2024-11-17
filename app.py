@@ -40,7 +40,7 @@ def main():
     # Filter data for the selected county
     county_data = df[df['Income_Distribution'] == selected_county]
     # Rename latitude and longitude columns for st.map compatibility
-    # county_data = county_data.rename(columns={'Latitude': 'latitude', 'Longitude': 'longitude'})
+    county_data = county_data.rename(columns={'Latitude': 'latitude', 'Longitude': 'longitude'})
 
     
     st.write(f"Showing data for {selected_county}")

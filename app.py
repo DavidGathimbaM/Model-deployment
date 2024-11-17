@@ -99,7 +99,7 @@ def main():
     # Handle any missing features for scaler
     for feature in required_features:
         if feature not in X_numeric.columns:
-            X_numeric[feature] = 0
+            X_numeric.loc[:, feature] = 0
 
     # Ensure correct feature order
     X_numeric = X_numeric[required_features]

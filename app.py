@@ -44,7 +44,7 @@ def main():
 
     
     st.write(f"Showing data for {selected_county}")
-    st.map(county_data[['Latitude', 'Longitude	']])
+    st.map(county_data[['Latitude', 'Longitude']])
 
     st.write("Columns in county_data before prediction:", county_data.columns.tolist())
 

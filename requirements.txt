@@ -1,10 +1,9 @@
 streamlit
+streamlit-folium
 tensorflow
-joblib
-pandas
-geopandas
-folium
-matplotlib
-hdbscan
 scikit-learn
 numpy
+pandas
+folium
+hdbscan
+joblib

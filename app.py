@@ -22,7 +22,7 @@ def load_models():
 # Load the dataset
 @st.cache_data
 def load_data():
-    return pd.read_csv("data/final_merged_df.csv")
+    return pd.read_csv("data/final_df.csv")
 
 # Main App
 def main():

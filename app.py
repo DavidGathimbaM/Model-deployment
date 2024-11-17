@@ -108,7 +108,8 @@ def main():
     X_scaled = scaler.transform(X_numeric)
 
     # Make predictions
-    predictions = mlp_model.predict(X_scaled)
+    X_county = county_data['Income_Distribution_encoded']
+    predictions = mlp_model.predict(X_scaled, X_county)
     county_data['Electricity_Predicted'] = (predictions > 0.5).astype(int)
 
     # Debugging: Display predictions

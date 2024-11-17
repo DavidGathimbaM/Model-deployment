@@ -8,4 +8,3 @@ matplotlib
 hdbscan
 scikit-learn
 numpy
-streamlit-folium

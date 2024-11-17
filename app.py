@@ -99,7 +99,7 @@ def main():
     # Handle any missing features for scaler
     for feature in required_features:
         if feature not in X_numeric.columns:
-            X_numeric.loc[:, feature] = 0
+            X_numeric.loc[:, feature] = 0  # Ensure you're working with a copy if needed
 
     # Ensure correct feature order
     X_numeric = X_numeric[required_features]
@@ -109,9 +109,8 @@ def main():
 
     # Make predictions
     X_county = county_data['Income_Distribution_encoded']
-    X_scaled = X_scaled.values.reshape(-1, 1)
+    X_scaled = X_scaled.reshape(-1, 1)
     X_county = X_county.values.reshape(-1, 1)
-
     predictions = mlp_model.predict(X_scaled, X_county)
     county_data['Electricity_Predicted'] = (predictions > 0.5).astype(int)
 

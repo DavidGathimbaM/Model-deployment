@@ -8,7 +8,7 @@ from sklearn.preprocessing import StandardScaler
 from streamlit_folium import st_folium
 import warnings
 
-# Suppress TensorFlow and general warnings
+# Suppress warnings and TensorFlow GPU errors
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # Suppress TensorFlow warnings
 warnings.filterwarnings("ignore", category=SyntaxWarning)
 
@@ -59,12 +59,12 @@ def main():
         st.error(f"No data available for the selected county: {selected_county}")
         st.stop()
 
-    # Ensure Latitude and Longitude columns exist
-    if 'Latitude' not in df.columns or 'Longitude' not in df.columns:
+    # Validate Latitude and Longitude
+    if 'Latitude' not in county_data.columns or 'Longitude' not in county_data.columns:
         st.error("Latitude or Longitude columns are missing. Cannot render the map.")
         st.stop()
 
-    # HDBSCAN clustering
+    # Apply HDBSCAN clustering
     try:
         pca_features = county_data[['PCA_Component_1', 'PCA_Component_2']]
         clusters = hdbscan_model.fit_predict(pca_features)
@@ -73,10 +73,6 @@ def main():
     except Exception as e:
         st.error(f"Error applying HDBSCAN clustering: {e}")
         st.stop()
-
-    # Debugging: HDBSCAN results
-    st.write("HDBSCAN clustering results:")
-    st.dataframe(county_data[['Cluster', 'Stability_Score']])
 
     # Prepare inputs for the MLP model
     numeric_features = [

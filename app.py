@@ -97,7 +97,9 @@ def main():
                 fill_opacity=0.7,
                 popup=f"Electricity: {'Yes' if row['Electricity_Predicted'] == 1 else 'No'}"
             ).add_to(folium_map)
-        st_folium(folium_map, width=700)
+        
+        # Display Folium map using st_folium
+        st_folium(folium_map, width=700, height=500)
 
     except Exception as e:
         st.error(f"An error occurred: {str(e)}")

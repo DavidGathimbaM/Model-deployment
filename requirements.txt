@@ -2,11 +2,11 @@ streamlit
 tensorflow
 numpy
 pandas
-scikit-learn==1.2.2
+scikit-learn==1.5.1
 streamlit-folium
 folium
 hdbscan
 joblib
 Cython
 setuptools
-
+wheel

@@ -187,6 +187,13 @@ def main():
 
     st.write("Columns in county_data before prediction:", county_data.columns.tolist())
 
+    # Define features used for prediction
+    numeric_features = [
+        'Pop_Density_2020', 'Wind_Speed', 'Latitude', 'Longitude', 'Grid_Value',
+        'Cluster', 'Stability_Score', 'Income_Distribution_encoded', 
+        'Cluster_Mean_Pop_Density', 'Cluster_Mean_Wind_Speed'
+    ]
+
     # List of required columns for the MLP model
     required_columns = ['Pop_Density_2020', 'Wind_Speed', 'Latitude', 'Longitude', 'Grid_Value', 'Cluster', 'Cluster_Mean_Pop_Density', 'Cluster_Mean_Wind_Speed', 'Income_Distribution_encoded']
     # Check if all required columns exist
@@ -197,7 +204,7 @@ def main():
         st.stop()
     else:
     # Select features if all required columns are present
-        X_numeric = county_data[required_columns]
+        X_numeric = county_data[numeric_features]
 
         # Standardize features using the scaler
         X_scaled = scaler.transform(X_numeric)

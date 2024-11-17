@@ -110,7 +110,7 @@ def main():
     X_numeric_scaled = X_scaled  # Numeric features
     X_county_encoded = county_data['Income_Distribution_encoded'].values.reshape(-1, 1)
     # Make predictions with the correct input format
-    predictions = mlp_model.predict([X_numeric_scaled, X_county_encoded])
+    predictions = mlp_model.predict(X_numeric_scaled, X_county_encoded)
 
     # Update DataFrame with predictions
     county_data.loc[:, 'Electricity_Predicted'] = (predictions > 0.5).astype(int)

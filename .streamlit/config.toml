@@ -1,6 +1,1 @@
-[server]
-enableCORS = false
-port = $PORT
 
-[serverConfig]
-postCreateCommand = "pip install --upgrade pip"

@@ -107,7 +107,9 @@ def main():
     X_scaled = scaler.transform(X_numeric)
     #make prediction
     X_county = county_data['Income_Distribution_encoded'].values.reshape(-1, 1)
-    predictions = mlp_model.predict ([X_scaled, X_county])
+    X_combined = np.hstack([X_scaled, X_county])
+    predictions = mlp_model.predict(X_combined)
+
     county_data.loc[:, 'Electricity_Predicted'] = (predictions > 0.5).astype(int)
   
     # Visualization with Folium

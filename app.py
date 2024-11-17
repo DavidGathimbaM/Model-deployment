@@ -204,15 +204,19 @@ def main():
         st.stop()
     else:
     # Select features if all required columns are present
+        # X_numeric = county_data[numeric_features]
+
+        # # Standardize features using the scaler
+        # X_scaled = scaler.transform(X_numeric)
+
+        # # Debugging: Check and align features with the scaler
+        # required_features = scaler.feature_names_in_  # Features used during training
+        # st.write("Features seen during scaler fitting:", required_features)
+        # st.write("Current features passed to scaler:", X_numeric.columns.tolist())
         X_numeric = county_data[numeric_features]
-
-        # Standardize features using the scaler
+        required_features = scaler.feature_names_in_
+        X_numeric = X_numeric[required_features]  # Ensure correct order
         X_scaled = scaler.transform(X_numeric)
-
-        # Debugging: Check and align features with the scaler
-        required_features = scaler.feature_names_in_  # Features used during training
-        st.write("Features seen during scaler fitting:", required_features)
-        st.write("Current features passed to scaler:", X_numeric.columns.tolist())
 
         # Make predictions using the MLP model
         predictions = mlp_model.predict(X_scaled)

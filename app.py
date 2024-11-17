@@ -49,12 +49,12 @@ def main():
 
     
     st.write(f"Showing data for {selected_county}")
-    st.map(county_data[['Latitude', 'Longitude']])
+    st.map(county_data[['latitude', 'longitude']])
 
     st.write("Columns in county_data before prediction:", county_data.columns.tolist())
 
     # List of required columns for the MLP model
-    required_columns = ['Pop_Density_2020', 'Wind_Speed', 'Latitude', 'Longitude', 'Grid_Value']
+    required_columns = ['Pop_Density_2020', 'Wind_Speed', 'latitude', 'longitude', 'Grid_Value']
     # Check if all required columns exist
     missing_columns = [col for col in required_columns if col not in county_data.columns]
     if missing_columns:

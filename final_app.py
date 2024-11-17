@@ -17,7 +17,7 @@ warnings.filterwarnings("ignore", category=SyntaxWarning)
 def load_models():
     try:
         mlp_model = load_model("models/mlp_model.h5")
-        mlp_model.compile(optimizer="adam", loss="binary_crossentropy", metrics=["accuracy"])
+        # mlp_model.compile(optimizer="adam", loss="binary_crossentropy", metrics=["accuracy"])
         scaler = joblib.load("models/scaler.pkl")
         label_encoder = joblib.load("models/label_encoder.pkl")
         hdbscan_model = joblib.load("models/hdbscan_model.pkl")

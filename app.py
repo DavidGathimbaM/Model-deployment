@@ -43,7 +43,7 @@ def main():
         st.stop()
 
     county_data['Income_Distribution_encoded'] = label_encoder.transform(
-        county_data['Income_Distribution_encoded']
+        county_data['Income_Distribution']
     )
 
     # Ensure required columns exist

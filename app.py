@@ -45,11 +45,13 @@ def main():
     county_data.columns = county_data.columns.str.strip()
 
     # Rename latitude and longitude columns for st.map compatibility
-    county_data = county_data.rename(columns={'Latitude': 'latitude', 'Longitude': 'longitude'})
+    # Ensure column names are lowercase for st.map
+    county_data_map = county_data.rename(columns={'Latitude': 'latitude', 'Longitude': 'longitude'})
+
 
     
     st.write(f"Showing data for {selected_county}")
-    st.map(county_data[['latitude', 'longitude']])
+    st.map(county_data_map[['latitude', 'longitude']])
 
     st.write("Columns in county_data before prediction:", county_data.columns.tolist())
 

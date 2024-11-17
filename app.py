@@ -40,16 +40,16 @@ def main():
     # Filter data for the selected county
     county_data = df[df['Income_Distribution'] == selected_county]
     # Rename latitude and longitude columns for st.map compatibility
-    county_data = county_data.rename(columns={'Latitude': 'latitude', 'Longitude': 'longitude'})
+    # county_data = county_data.rename(columns={'Latitude': 'latitude', 'Longitude': 'longitude'})
 
     
     st.write(f"Showing data for {selected_county}")
-    st.map(county_data[['latitude', 'longitude']])
+    st.map(county_data[['Latitude', 'Longitude']])
 
     st.write("Columns in county_data before prediction:", county_data.columns.tolist())
 
     # List of required columns for the MLP model
-    required_columns = ['Pop_Density_2020', 'Wind_Speed', 'latitude', 'longitude', 'Grid_Value']
+    required_columns = ['Pop_Density_2020', 'Wind_Speed', 'Latitude', 'Longitude', 'Grid_Value']
     # Check if all required columns exist
     missing_columns = [col for col in required_columns if col not in county_data.columns]
     if missing_columns:
@@ -73,7 +73,7 @@ def main():
         st.dataframe(county_data)
         # Display predictions
         st.write("Predictions for Selected County:")
-        st.dataframe(county_data[['latitude', 'longitude', 'Electricity_Predicted']])
+        st.dataframe(county_data[['Latitude', 'Longitude', 'Electricity_Predicted']])
     # # Show Predictions
     # X_numeric = county_data[['Pop_Density_2020', 'Wind_Speed', 'Latitude', 'Longitude', 'Grid_Value']]
     # X_scaled = scaler.transform(X_numeric)
@@ -85,7 +85,7 @@ def main():
 
     # Visualization with Folium
     st.write("Electrification Map:")
-    folium_map = folium.Map(location=[df['latitude'].mean(), df['longitude'].mean()], zoom_start=6)
+    folium_map = folium.Map(location=[df['Latitude'].mean(), df['Longitude'].mean()], zoom_start=6)
     for _, row in county_data.iterrows():
         color = 'green' if row['Electricity_Predicted'] == 1 else 'red'
         folium.CircleMarker(

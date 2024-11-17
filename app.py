@@ -100,26 +100,16 @@ def main():
     for feature in required_features:
         if feature not in X_numeric.columns:
             X_numeric.loc[:, feature] = 0  # Ensure you're working with a copy if needed
-
     # Ensure correct feature order
     X_numeric = X_numeric[required_features]
-
     # Standardize features
     X_scaled = scaler.transform(X_numeric)
-
-    # Make predictions
-    X_county = county_data['Income_Distribution_encoded']
-    # X_scaled = X_scaled.reshape(-1, 1)
-    # X_county = X_county.values.reshape(-1, 1)
+    #make prediction
+    X_county = county_data['Income_Distribution_encoded'].values.reshape(-1, 1)
     X_combined = np.hstack([X_scaled, X_county])
-    X_combined = X_combined.reshape(-1, number_of_features)  # Replace with the correct number of features
     predictions = mlp_model.predict(X_combined)
-    county_data['Electricity_Predicted'] = (predictions > 0.5).astype(int)
-
-    # Debugging: Display predictions
-    st.write("Updated county_data with predictions:")
-    st.dataframe(county_data[['Latitude', 'Longitude', 'Electricity_Predicted']])
-
+    county_data.loc[:, 'Electricity_Predicted'] = (predictions > 0.5).astype(int)
+  
     # Visualization with Folium
     st.write("Electrification Map:")
     folium_map = folium.Map(location=[county_data['Latitude'].mean(), county_data['Longitude'].mean()], zoom_start=8)

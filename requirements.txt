@@ -1,9 +1,9 @@
-streamlit
-streamlit-folium
+streamlit==1.26.0
 tensorflow==2.11.0
-scikit-learn
-numpy
-pandas
+numpy==1.23.5
+pandas==1.5.3
+scikit-learn==1.2.2
+streamlit-folium
 folium
 hdbscan
 joblib

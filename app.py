@@ -9,9 +9,10 @@ import os
 from streamlit_folium import st_folium
 import warnings
 
-# Suppress warnings
+# Suppress warnings and configure TensorFlow
 warnings.filterwarnings("ignore", category=SyntaxWarning)
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"  # Disable GPU usage for TensorFlow
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # Suppress TensorFlow debug logs
 
 # Load Models and Scalers
 @st.cache_resource
@@ -85,27 +86,25 @@ def main():
     # Prepare numeric features for prediction
     X_numeric = county_data[required_columns]
 
-    # Align features with the scaler
-    if hasattr(scaler, 'feature_names_in_'):
-        required_features = scaler.feature_names_in_  # Features used during training
-    else:
-        required_features = required_columns  # Fallback to required columns if attribute is missing
-
     # Handle missing features for scaler
+    X_numeric = X_numeric.copy()  # Avoid SettingWithCopyWarning
+    if hasattr(scaler, 'feature_names_in_'):
+        required_features = scaler.feature_names_in_
+    else:
+        required_features = required_columns
+
     for feature in required_features:
         if feature not in X_numeric.columns:
-            X_numeric.loc[:, feature] = 0  # Add missing features as zeros
+            X_numeric[feature] = 0
 
-    # Ensure correct feature order
+    # Align and scale features
     X_numeric = X_numeric[required_features]
-
-    # Standardize features
     X_numeric_scaled = scaler.transform(X_numeric)
 
     # Prepare encoded categorical features
     X_county_encoded = county_data['Income_Distribution_encoded'].values.reshape(-1, 1)
 
-    # Make predictions with the correct input format
+    # Make predictions
     try:
         predictions = mlp_model.predict([X_numeric_scaled, X_county_encoded])
         county_data.loc[:, 'Electricity_Predicted'] = (predictions > 0.5).astype(int)

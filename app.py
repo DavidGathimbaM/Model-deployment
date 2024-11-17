@@ -14,16 +14,24 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "-1"  # Disable GPU usage for TensorFlow
 # Load Models and Scalers
 @st.cache_resource
 def load_models():
-    mlp_model = load_model("models/mlp_model.h5")
-    scaler = joblib.load("models/scaler.pkl")
-    label_encoder = joblib.load("models/label_encoder.pkl")
-    hdbscan_model = joblib.load("models/hdbscan_model.pkl")
-    return mlp_model, scaler, label_encoder, hdbscan_model
+    try:
+        mlp_model = load_model("models/mlp_model.h5")
+        scaler = joblib.load("models/scaler.pkl")
+        label_encoder = joblib.load("models/label_encoder.pkl")
+        hdbscan_model = joblib.load("models/hdbscan_model.pkl")
+        return mlp_model, scaler, label_encoder, hdbscan_model
+    except Exception as e:
+        st.error(f"Error loading models: {e}")
+        st.stop()
 
 # Load the dataset
 @st.cache_data
 def load_data():
-    return pd.read_csv("data/final_df.csv")
+    try:
+        return pd.read_csv("data/final_df.csv")
+    except Exception as e:
+        st.error(f"Error loading dataset: {e}")
+        st.stop()
 
 # Main App
 def main():
@@ -82,7 +90,10 @@ def main():
     X_numeric = county_data[required_columns]
 
     # Align features with the scaler
-    required_features = scaler.feature_names_in_  # Features used during training
+    if hasattr(scaler, 'feature_names_in_'):
+        required_features = scaler.feature_names_in_  # Features used during training
+    else:
+        required_features = required_columns  # Fallback to required columns if attribute is missing
     st.write("Features seen during scaler fitting:", required_features)
 
     # Handle any missing features for scaler
@@ -106,7 +117,7 @@ def main():
 
     # Visualization with Folium
     st.write("Electrification Map:")
-    folium_map = folium.Map(location=[df['Latitude'].mean(), df['Longitude'].mean()], zoom_start=6)
+    folium_map = folium.Map(location=[county_data['Latitude'].mean(), county_data['Longitude'].mean()], zoom_start=8)
     for _, row in county_data.iterrows():
         color = 'green' if row['Electricity_Predicted'] == 1 else 'red'
         folium.CircleMarker(
@@ -121,6 +132,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 # import streamlit as st
 # import pandas as pd

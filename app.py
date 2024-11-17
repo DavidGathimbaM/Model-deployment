@@ -194,6 +194,17 @@ def main():
         'Cluster_Mean_Pop_Density', 'Cluster_Mean_Wind_Speed'
     ]
 
+    # Apply HDBSCAN clustering to the data
+    st.write("Applying HDBSCAN clustering...")
+    pca_features = county_data[['PCA_Component_1', 'PCA_Component_2']]  # Replace with PCA features
+    clusters = hdbscan_model.fit_predict(pca_features)
+    county_data['Cluster'] = clusters
+    county_data['Stability_Score'] = hdbscan_model.probabilities_
+
+    # Debugging: Display HDBSCAN results
+    st.write("HDBSCAN clustering results:")
+    st.dataframe(county_data[['Cluster', 'Stability_Score']])
+
     # List of required columns for the MLP model
     required_columns = ['Pop_Density_2020', 'Wind_Speed', 'Latitude', 'Longitude', 'Grid_Value', 'Cluster', 'Cluster_Mean_Pop_Density', 'Cluster_Mean_Wind_Speed', 'Income_Distribution_encoded']
     # Check if all required columns exist
@@ -213,22 +224,30 @@ def main():
         # required_features = scaler.feature_names_in_  # Features used during training
         # st.write("Features seen during scaler fitting:", required_features)
         # st.write("Current features passed to scaler:", X_numeric.columns.tolist())
+        # Select and scale numeric features
         X_numeric = county_data[numeric_features]
-        required_features = scaler.feature_names_in_
-        X_numeric = X_numeric[required_features]  # Ensure correct order
-        X_scaled = scaler.transform(X_numeric)
+        X_numeric_scaled = scaler.transform(X_numeric)
 
-        # Make predictions using the MLP model
-        predictions = mlp_model.predict(X_scaled)
-        
+        # Extract county categorical input
+        X_county = county_data['Income_Distribution_encoded']
+        # Debugging: Display shapes of inputs
+        st.write("Shape of X_numeric_scaled:", X_numeric_scaled.shape)
+        st.write("Shape of X_county:", X_county.shape)
+
+        # Make predictions with two inputs
+        predictions = mlp_model.predict([X_numeric_scaled, X_county])
         county_data['Electricity_Predicted'] = (predictions > 0.5).astype(int)
 
-        # Debugging: Ensure column exists
-        st.write("Updated county_data with Electricity_Predicted column:")
-        st.dataframe(county_data)
-        # Display predictions
-        st.write("Predictions for Selected County:")
+        # # Debugging: Ensure column exists
+        # st.write("Updated county_data with Electricity_Predicted column:")
+        # st.dataframe(county_data)
+
+        # Debugging: Display predictions
+        st.write("Updated county_data with predictions:")
         st.dataframe(county_data[['Latitude', 'Longitude', 'Electricity_Predicted']])
+        # # Display predictions
+        # st.write("Predictions for Selected County:")
+        # st.dataframe(county_data[['Latitude', 'Longitude', 'Electricity_Predicted']])
     # # Show Predictions
     # X_numeric = county_data[['Pop_Density_2020', 'Wind_Speed', 'Latitude', 'Longitude', 'Grid_Value']]
     # X_scaled = scaler.transform(X_numeric)
@@ -238,20 +257,38 @@ def main():
     # st.write("Predictions for Selected County:")
     # st.dataframe(county_data[['Latitude', 'Longitude', 'Electricity_Predicted']])
 
-    # Visualization with Folium
-    st.write("Electrification Map:")
-    folium_map = folium.Map(location=[df['Latitude'].mean(), df['Longitude'].mean()], zoom_start=6)
-    for _, row in county_data.iterrows():
-        color = 'green' if row['Electricity_Predicted'] == 1 else 'red'
-        folium.CircleMarker(
-            location=[row['Latitude'], row['Longitude']],
-            radius=5,
-            color=color,
-            fill=True,
-            fill_opacity=0.7,
-            popup=f"Prediction: {'Electricity' if row['Electricity_Predicted'] == 1 else 'No Electricity'}"
-        ).add_to(folium_map)
-    st_folium = st_folium(folium_map, width=700)
+#     # Visualization with Folium
+#     st.write("Electrification Map:")
+#     folium_map = folium.Map(location=[df['Latitude'].mean(), df['Longitude'].mean()], zoom_start=6)
+#     for _, row in county_data.iterrows():
+#         color = 'green' if row['Electricity_Predicted'] == 1 else 'red'
+#         folium.CircleMarker(
+#             location=[row['Latitude'], row['Longitude']],
+#             radius=5,
+#             color=color,
+#             fill=True,
+#             fill_opacity=0.7,
+#             popup=f"Prediction: {'Electricity' if row['Electricity_Predicted'] == 1 else 'No Electricity'}"
+#         ).add_to(folium_map)
+#     st_folium = st_folium(folium_map, width=700)
+
+# if __name__ == "__main__":
+#     main()
+
+        # Visualization with Folium
+        st.write("Electrification Map:")
+        folium_map = folium.Map(location=[df['Latitude'].mean(), df['Longitude'].mean()], zoom_start=6)
+        for _, row in county_data.iterrows():
+            color = 'green' if row['Electricity_Predicted'] == 1 else 'red'
+            folium.CircleMarker(
+                location=[row['Latitude'], row['Longitude']],
+                radius=5,
+                color=color,
+                fill=True,
+                fill_opacity=0.7,
+                popup=f"Prediction: {'Electricity' if row['Electricity_Predicted'] == 1 else 'No Electricity'}"
+            ).add_to(folium_map)
+        st_folium(folium_map, width=700)
 
 if __name__ == "__main__":
     main()

@@ -80,7 +80,7 @@ def main():
 
     # Viability calculations
     grid_proximity_threshold = 5  # in kilometers (example threshold)
-    wind_speed_threshold = 4.5  # in m/s (example threshold for wind viability)
+    wind_speed_threshold = 8  # in m/s (example threshold for wind viability)
 
     # Calculate distances to grid (simplified for demonstration purposes)
     county_data['Distance_to_Grid'] = county_data['Grid_Value'] * 10  # Example scaling for proximity

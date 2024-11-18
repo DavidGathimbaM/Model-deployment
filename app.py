@@ -50,11 +50,10 @@ def main():
     st.write(f"Data for {selected_county}")
     st.dataframe(county_data)
 
-    # Ensure required columns are present
+    # Ensure required columns are present (updated based on screenshot)
     required_columns = [
-        'Pop_Density_2020', 'Wind_Speed', 'Latitude', 'Longitude', 'Grid_Value',
-        'Cluster', 'Cluster_Mean_Pop_Density', 'Cluster_Mean_Wind_Speed', 
-        'Income_Distribution_encoded', 'Stability_Score'
+        'Pop_Density_2020', 'Wind_Speed', 'Latitude', 'Longitude', 
+        'Grid_Value', 'Income_Distribution_encoded'
     ]
     missing_columns = [col for col in required_columns if col not in county_data.columns]
     if missing_columns:

@@ -10,9 +10,9 @@ import joblib
 # Cache resource-intensive tasks
 @st.cache_resource
 def load_models():
-    scaler = joblib.load("scaler.pkl")
-    label_encoder = joblib.load("label_encoder.pkl")
-    mlp_model = load_model("mlp_model.h5")
+    scaler = joblib.load("models/scaler.pkl")
+    label_encoder = joblib.load("models/label_encoder.pkl")
+    mlp_model = load_model("models/mlp_model.h5")
     return scaler, label_encoder, mlp_model
 
 # Main App

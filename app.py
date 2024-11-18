@@ -50,10 +50,10 @@ def main():
     st.write(f"Data for {selected_county}")
     st.dataframe(county_data)
 
-    # Ensure required columns are present (updated based on screenshot)
+    # Ensure required columns are present
     required_columns = [
         'Pop_Density_2020', 'Wind_Speed', 'Latitude', 'Longitude', 
-        'Grid_Value', 'Cluster', 'Stability_Score', 'Income_Distribution_encoded', 'Cluster_Mean_Pop_Density', 'Cluster_Mean_Wind_Speed'
+        'Grid_Value', 'Income_Distribution_encoded'
     ]
     missing_columns = [col for col in required_columns if col not in county_data.columns]
     if missing_columns:
@@ -63,7 +63,6 @@ def main():
     # Align the columns for scaling
     try:
         X_numeric = county_data[required_columns]
-        # Debugging: Check alignment of feature names
         st.write("Scaler feature names (training):", scaler.feature_names_in_)
         st.write("Current input features:", X_numeric.columns.tolist())
         X_scaled = scaler.transform(X_numeric)
@@ -79,23 +78,48 @@ def main():
         st.error(f"Prediction error: {e}")
         return
 
-    # Display predictions
-    st.write("Predictions for Electricity Access:")
-    st.dataframe(county_data[['Latitude', 'Longitude', 'Electricity_Predicted']])
+    # Viability calculations
+    grid_proximity_threshold = 5  # in kilometers (example threshold)
+    wind_speed_threshold = 4.5  # in m/s (example threshold for wind viability)
+
+    # Calculate distances to grid (simplified for demonstration purposes)
+    county_data['Distance_to_Grid'] = county_data['Grid_Value'] * 10  # Example scaling for proximity
+
+    # Determine viability
+    county_data['Viability'] = np.where(
+        (county_data['Electricity_Predicted'] == 0) & (county_data['Distance_to_Grid'] <= grid_proximity_threshold),
+        "Viable for Grid Extension",
+        np.where(
+            (county_data['Electricity_Predicted'] == 0) & (county_data['Wind_Speed'] >= wind_speed_threshold),
+            "Viable for Wind Microgrid",
+            "Not Viable"
+        )
+    )
+
+    # Display viability results
+    st.write("Viability Analysis:")
+    st.dataframe(county_data[['Latitude', 'Longitude', 'Electricity_Predicted', 'Distance_to_Grid', 'Viability']])
 
     # Visualize on map
     try:
-        st.write("Electrification Map:")
+        st.write("Electrification and Viability Map:")
         folium_map = folium.Map(location=[county_data['Latitude'].mean(), county_data['Longitude'].mean()], zoom_start=7)
         for _, row in county_data.iterrows():
-            color = 'green' if row['Electricity_Predicted'] == 1 else 'red'
+            if row['Viability'] == "Viable for Grid Extension":
+                color = 'blue'
+            elif row['Viability'] == "Viable for Wind Microgrid":
+                color = 'purple'
+            elif row['Electricity_Predicted'] == 1:
+                color = 'green'
+            else:
+                color = 'red'
             folium.CircleMarker(
                 location=[row['Latitude'], row['Longitude']],
                 radius=5,
                 color=color,
                 fill=True,
                 fill_opacity=0.7,
-                popup=f"Prediction: {'Electricity' if row['Electricity_Predicted'] == 1 else 'No Electricity'}"
+                popup=f"Viability: {row['Viability']}, Prediction: {'Electricity' if row['Electricity_Predicted'] == 1 else 'No Electricity'}"
             ).add_to(folium_map)
         st_folium(folium_map, width=700)
     except Exception as e:

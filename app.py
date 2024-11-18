@@ -53,7 +53,7 @@ def main():
     # Ensure required columns are present (updated based on screenshot)
     required_columns = [
         'Pop_Density_2020', 'Wind_Speed', 'Latitude', 'Longitude', 
-        'Grid_Value', 'Income_Distribution_encoded', 'Cluster', 'Stability_Score', 'Cluster_Mean_Pop_Density', 'Cluster_Mean_Wind_Speed'
+        'Grid_Value', 'Cluster', 'Stability_Score', 'Income_Distribution_encoded', 'Cluster_Mean_Pop_Density', 'Cluster_Mean_Wind_Speed'
     ]
     missing_columns = [col for col in required_columns if col not in county_data.columns]
     if missing_columns:

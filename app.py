@@ -1,4 +1,4 @@
-import streamlit as st
+/import streamlit as st
 import pandas as pd
 import numpy as np
 import folium
@@ -11,9 +11,9 @@ import pickle
 @st.cache_resource
 def load_resources():
     try:
-        scaler = pickle.load(open("scaler.pkl", "rb"))
-        label_encoder = pickle.load(open("label_encoder.pkl", "rb"))
-        mlp_model = load_model("mlp_model.h5")
+        scaler = pickle.load(open("models/scaler.pkl", "rb"))
+        label_encoder = pickle.load(open("models/label_encoder.pkl", "rb"))
+        mlp_model = load_model("models/mlp_model.h5")
     except FileNotFoundError as e:
         st.error(f"File not found: {e.filename}. Please upload the required model files.")
         st.stop()
@@ -28,7 +28,7 @@ st.title("Electrification and Viability Analysis")
 @st.cache_resource
 def load_dataset():
     # Replace the URL below with your GitHub raw dataset link
-    dataset_url = "https://raw.githubusercontent.com/your-github-username/your-repository/main/your-dataset.csv"
+    dataset_url = "data/final_df.csv"
     try:
         df = pd.read_csv(dataset_url)
         return df

@@ -10,9 +10,9 @@ import pickle
 # Load pre-trained models and scaler
 @st.cache_resource
 def load_resources():
-    scaler = pickle.load(open("scaler.pkl", "rb"))
-    label_encoder = pickle.load(open("label_encoder.pkl", "rb"))
-    mlp_model = load_model("mlp_model.h5")
+    scaler = pickle.load(open("models/scaler.pkl", "rb"))
+    label_encoder = pickle.load(open("models/label_encoder.pkl", "rb"))
+    mlp_model = load_model("models/mlp_model.h5")
     return scaler, label_encoder, mlp_model
 
 scaler, label_encoder, mlp_model = load_resources()

@@ -7,7 +7,6 @@ import folium
 from streamlit_folium import st_folium
 import joblib
 
-# Cache resource-intensive tasks
 @st.cache_resource
 def load_models():
     """Load scaler, label encoder, and MLP model."""
@@ -55,26 +54,27 @@ def main():
     required_columns = [
         'Pop_Density_2020', 'Wind_Speed', 'Latitude', 'Longitude', 'Grid_Value',
         'Cluster', 'Cluster_Mean_Pop_Density', 'Cluster_Mean_Wind_Speed', 
-        'Income_Distribution_encoded'
+        'Income_Distribution_encoded', 'Stability_Score'
     ]
     missing_columns = [col for col in required_columns if col not in county_data.columns]
     if missing_columns:
         st.error(f"Missing required columns: {missing_columns}")
         return
 
-    # Prepare input for scaling and prediction
+    # Align the columns for scaling
     try:
         X_numeric = county_data[required_columns]
+        # Debugging: Check alignment of feature names
+        st.write("Scaler feature names (training):", scaler.feature_names_in_)
+        st.write("Current input features:", X_numeric.columns.tolist())
         X_scaled = scaler.transform(X_numeric)
     except ValueError as e:
         st.error(f"Feature mismatch: {e}")
-        st.write("Expected columns:", scaler.feature_names_in_)
-        st.write("Input columns:", county_data.columns.tolist())
         return
 
     # Make predictions using the MLP model
     try:
-        predictions = mlp_model.predict([X_scaled, X_numeric['Income_Distribution_encoded']])
+        predictions = mlp_model.predict([X_scaled, county_data['Income_Distribution_encoded']])
         county_data['Electricity_Predicted'] = (predictions > 0.5).astype(int)
     except Exception as e:
         st.error(f"Prediction error: {e}")

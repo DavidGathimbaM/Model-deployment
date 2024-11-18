@@ -92,7 +92,7 @@ def main():
         np.where(
             (county_data['Electricity_Predicted'] == 0) & (county_data['Wind_Speed'] >= wind_speed_threshold),
             "Viable for Wind Microgrid",
-            "Not Viable"
+            "Electrified"
         )
     )
 

@@ -28,7 +28,7 @@ st.title("Electrification and Viability Analysis")
 @st.cache_resource
 def load_dataset():
     # Replace the URL below with your GitHub raw dataset link
-    dataset_url = "data/final_df.csv"
+    dataset_url = "https://github.com/DavidGathimbaM/Model-deployment/blob/main/data/final_df.csv"
     try:
         df = pd.read_csv(dataset_url)
         return df

@@ -1,11 +1,18 @@
+import os
 import streamlit as st
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from tensorflow.keras.models import load_model
 import folium
+from folium.plugins import MarkerCluster
 from streamlit_folium import st_folium
 import joblib
+
+# Suppress TensorFlow logs
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+# Disable GPU for TensorFlow
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 @st.cache_resource
 def load_models():
@@ -13,10 +20,8 @@ def load_models():
     try:
         scaler = joblib.load("models/scaler.pkl")
         label_encoder = joblib.load("models/label_encoder.pkl")
-        
-        # Load the model without recompiling to prevent retraining
-        mlp_model = load_model("models/mlp_model.h5", compile=False)
-        
+        # Load the model without recompiling
+        mlp_model = load_model("models/mlp_model_inference.h5", compile=False)
         return scaler, label_encoder, mlp_model
     except Exception as e:
         st.error(f"Error loading models: {e}")
@@ -30,6 +35,35 @@ def load_data():
     except Exception as e:
         st.error(f"Error loading dataset: {e}")
         raise
+
+@st.cache_data
+def generate_map(data):
+    """Generate a folium map without sampling."""
+    folium_map = folium.Map(location=[data['Latitude'].mean(), data['Longitude'].mean()], zoom_start=7)
+    marker_cluster = MarkerCluster().add_to(folium_map)
+    
+    for _, row in data.iterrows():
+        color = (
+            'blue' if row['Viability'] == "Viable for Grid Extension" else
+            'purple' if row['Viability'] == "Viable for Wind Microgrid" else
+            'green' if row['Electricity_Predicted'] == 1 else
+            'red'
+        )
+        folium.CircleMarker(
+            location=[row['Latitude'], row['Longitude']],
+            radius=5,
+            color=color,
+            fill=True,
+            fill_opacity=0.7,
+            popup=f"Viability: {row['Viability']}"
+        ).add_to(marker_cluster)
+    
+    return folium_map
+
+@st.cache_data
+def predict_with_model(model, inputs):
+    """Run predictions using the loaded model."""
+    return model.predict(inputs)
 
 def main():
     st.title("Electricity Access and Microgrid Viability")
@@ -86,7 +120,11 @@ def main():
     # Make predictions using the MLP model
     try:
         if county_mask.any():
-            predictions = mlp_model.predict([X_scaled, df.loc[county_mask, 'Income_Distribution_encoded'].values.reshape(-1, 1)])
+            inputs = {
+                "input_layer": X_scaled,
+                "input_layer_1": df.loc[county_mask, 'Income_Distribution_encoded'].values.reshape(-1, 1)
+            }
+            predictions = predict_with_model(mlp_model, inputs)
             df.loc[county_mask, 'Electricity_Predicted'] = (predictions > 0.5).astype(int)
         else:
             st.error("No data available for predictions.")
@@ -123,47 +161,9 @@ def main():
 
     # Visualize on map
     try:
-        lat_mean = df.loc[county_mask, 'Latitude'].mean()
-        lon_mean = df.loc[county_mask, 'Longitude'].mean()
-        if pd.isnull(lat_mean) or pd.isnull(lon_mean):
-            st.error("Invalid geographic data for the selected county.")
-            return
-
         st.write("Electrification and Viability Map:")
-        folium_map = folium.Map(location=[lat_mean, lon_mean], zoom_start=7)
-        for _, row in df.loc[county_mask].iterrows():
-            if row['Viability'] == "Viable for Grid Extension":
-                color = 'blue'
-            elif row['Viability'] == "Viable for Wind Microgrid":
-                color = 'purple'
-            elif row['Electricity_Predicted'] == 1:
-                color = 'green'
-            else:
-                color = 'red'
-            folium.CircleMarker(
-                location=[row['Latitude'], row['Longitude']],
-                radius=5,
-                color=color,
-                fill=True,
-                fill_opacity=0.7,
-                popup=f"Viability: {row['Viability']}, Prediction: {'Electricity' if row['Electricity_Predicted'] == 1 else 'No Electricity'}"
-            ).add_to(folium_map)
-
-        # Add a legend to the map
-        legend_html = """
-        <div style="position: fixed; 
-                    bottom: 50px; left: 50px; width: 200px; height: 120px; 
-                    background-color: white; z-index:1000; font-size:14px;
-                    border:2px solid grey; border-radius:8px; padding:10px;">
-            <b>Map Legend</b><br>
-            <i style="background: green; width: 10px; height: 10px; display: inline-block;"></i> Electrified<br>
-            <i style="background: blue; width: 10px; height: 10px; display: inline-block;"></i> Grid Extension<br>
-            <i style="background: purple; width: 10px; height: 10px; display: inline-block;"></i> Wind Microgrid<br>
-            <i style="background: red; width: 10px; height: 10px; display: inline-block;"></i> No Electricity<br>
-        </div>
-        """
-        folium_map.get_root().html.add_child(folium.Element(legend_html))
-
+        map_data = df.loc[county_mask]
+        folium_map = generate_map(map_data)
         st_folium(folium_map, width=700)
     except Exception as e:
         st.error(f"Error displaying map: {e}")

@@ -42,27 +42,28 @@ def main():
         return
 
     # Filter data for selected county
-    county_data = df[df['Income_Distribution_encoded'] == encoded_county].copy()
-    if county_data.empty:
+    # Select rows but avoid creating a new DataFrame
+    county_mask = df['Income_Distribution_encoded'] == encoded_county
+    if not county_mask.any():
         st.error("No data found for the selected county.")
         return
 
     st.write(f"Data for {selected_county}")
-    st.dataframe(county_data)
+    st.dataframe(df.loc[county_mask])
 
     # Ensure required columns are present
     required_columns = [
         'Pop_Density_2020', 'Wind_Speed', 'Latitude', 'Longitude', 
         'Grid_Value', 'Cluster', 'Stability_Score', 'Income_Distribution_encoded', 'Cluster_Mean_Pop_Density', 'Cluster_Mean_Wind_Speed'
     ]
-    missing_columns = [col for col in required_columns if col not in county_data.columns]
+    missing_columns = [col for col in required_columns if col not in df.columns]
     if missing_columns:
         st.error(f"Missing required columns: {missing_columns}")
         return
 
     # Align the columns for scaling with validation
     try:
-        X_numeric = county_data[required_columns]
+        X_numeric = df.loc[county_mask, required_columns]
         if hasattr(scaler, 'feature_names_in_'):
             missing_features = set(scaler.feature_names_in_) - set(X_numeric.columns)
             if missing_features:
@@ -75,8 +76,8 @@ def main():
 
     # Make predictions using the MLP model
     try:
-        predictions = mlp_model.predict([X_scaled, county_data['Income_Distribution_encoded']])
-        county_data.loc[:, 'Electricity_Predicted'] = (predictions > 0.5).astype(int)
+        predictions = mlp_model.predict([X_scaled, df.loc[county_mask, 'Income_Distribution_encoded']])
+        df.loc[county_mask, 'Electricity_Predicted'] = (predictions > 0.5).astype(int)
     except Exception as e:
         st.error(f"Prediction error: {e}")
         return
@@ -86,14 +87,14 @@ def main():
     wind_speed_threshold = st.sidebar.slider("Wind Speed Threshold (m/s)", 1, 15, 8)
 
     # Viability calculations
-    county_data['Distance_to_Grid'] = county_data['Grid_Value'] * 10  # Example scaling for proximity
+    df.loc[county_mask, 'Distance_to_Grid'] = df.loc[county_mask, 'Grid_Value'] * 10  # Example scaling for proximity
 
     # Determine viability
-    county_data.loc[:, 'Viability'] = np.where(
-        (county_data['Electricity_Predicted'] == 0) & (county_data['Distance_to_Grid'] <= grid_proximity_threshold),
+    df.loc[county_mask, 'Viability'] = np.where(
+        (df.loc[county_mask, 'Electricity_Predicted'] == 0) & (df.loc[county_mask, 'Distance_to_Grid'] <= grid_proximity_threshold),
         "Viable for Grid Extension",
         np.where(
-            (county_data['Electricity_Predicted'] == 0) & (county_data['Wind_Speed'] >= wind_speed_threshold),
+            (df.loc[county_mask, 'Electricity_Predicted'] == 0) & (df.loc[county_mask, 'Wind_Speed'] >= wind_speed_threshold),
             "Viable for Wind Microgrid",
             "Electrified"
         )
@@ -101,13 +102,13 @@ def main():
 
     # Display viability results
     st.write("Viability Analysis:")
-    st.dataframe(county_data[['Latitude', 'Longitude', 'Electricity_Predicted', 'Distance_to_Grid', 'Viability']])
+    st.dataframe(df.loc[county_mask, ['Latitude', 'Longitude', 'Electricity_Predicted', 'Distance_to_Grid', 'Viability']])
 
     # Visualize on map
     try:
         st.write("Electrification and Viability Map:")
-        folium_map = folium.Map(location=[county_data['Latitude'].mean(), county_data['Longitude'].mean()], zoom_start=7)
-        for _, row in county_data.iterrows():
+        folium_map = folium.Map(location=[df.loc[county_mask, 'Latitude'].mean(), df.loc[county_mask, 'Longitude'].mean()], zoom_start=7)
+        for _, row in df.loc[county_mask].iterrows():
             if row['Viability'] == "Viable for Grid Extension":
                 color = 'blue'
             elif row['Viability'] == "Viable for Wind Microgrid":

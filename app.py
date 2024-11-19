@@ -42,7 +42,7 @@ def main():
         return
 
     # Filter data for selected county
-    county_data = df[df['Income_Distribution_encoded'] == encoded_county]
+    county_data = df[df['Income_Distribution_encoded'] == encoded_county].copy()
     if county_data.empty:
         st.error("No data found for the selected county.")
         return
@@ -76,7 +76,7 @@ def main():
     # Make predictions using the MLP model
     try:
         predictions = mlp_model.predict([X_scaled, county_data['Income_Distribution_encoded']])
-        county_data['Electricity_Predicted'] = (predictions > 0.5).astype(int)
+        county_data.loc[:, 'Electricity_Predicted'] = (predictions > 0.5).astype(int)
     except Exception as e:
         st.error(f"Prediction error: {e}")
         return
@@ -89,7 +89,7 @@ def main():
     county_data['Distance_to_Grid'] = county_data['Grid_Value'] * 10  # Example scaling for proximity
 
     # Determine viability
-    county_data['Viability'] = np.where(
+    county_data.loc[:, 'Viability'] = np.where(
         (county_data['Electricity_Predicted'] == 0) & (county_data['Distance_to_Grid'] <= grid_proximity_threshold),
         "Viable for Grid Extension",
         np.where(

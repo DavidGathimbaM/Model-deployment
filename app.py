@@ -1,79 +1,35 @@
-import os
 import streamlit as st
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from tensorflow.keras.models import load_model
 import folium
-from folium.plugins import MarkerCluster
 from streamlit_folium import st_folium
 import joblib
-
-# Suppress TensorFlow logs
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-# Disable GPU for TensorFlow
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 @st.cache_resource
 def load_models():
     """Load scaler, label encoder, and MLP model."""
-    try:
-        scaler = joblib.load("models/scaler.pkl")
-        label_encoder = joblib.load("models/label_encoder.pkl")
-        # Load the model without recompiling
-        mlp_model = load_model("models/mlp_model.h5", compile=False)
-        return scaler, label_encoder, mlp_model
-    except Exception as e:
-        st.error(f"Error loading models: {e}")
-        raise
+    scaler = joblib.load("models/scaler.pkl")
+    label_encoder = joblib.load("models/label_encoder.pkl")
+    mlp_model = load_model("models/mlp_model.h5")
+    return scaler, label_encoder, mlp_model
 
 @st.cache_data
 def load_data():
     """Load the dataset."""
-    try:
-        return pd.read_csv("data/final_df.csv")
-    except Exception as e:
-        st.error(f"Error loading dataset: {e}")
-        raise
-
-@st.cache_data
-def generate_map(data):
-    """Generate a folium map without sampling."""
-    folium_map = folium.Map(location=[data['Latitude'].mean(), data['Longitude'].mean()], zoom_start=7)
-    marker_cluster = MarkerCluster().add_to(folium_map)
-    
-    for _, row in data.iterrows():
-        color = (
-            'blue' if row['Viability'] == "Viable for Grid Extension" else
-            'purple' if row['Viability'] == "Viable for Wind Microgrid" else
-            'green' if row['Electricity_Predicted'] == 1 else
-            'red'
-        )
-        folium.CircleMarker(
-            location=[row['Latitude'], row['Longitude']],
-            radius=5,
-            color=color,
-            fill=True,
-            fill_opacity=0.7,
-            popup=f"Viability: {row['Viability']}"
-        ).add_to(marker_cluster)
-    
-    return folium_map
-
-@st.cache_data
-def predict_with_model(model, inputs):
-    """Run predictions using the loaded model."""
-    return model.predict(inputs)
+    return pd.read_csv("data/final_df.csv")
 
 def main():
     st.title("Electricity Access and Microgrid Viability")
     st.write("Explore electricity access predictions and clustering insights.")
-
+    
     # Load models and data
     try:
         scaler, label_encoder, mlp_model = load_models()
         df = load_data()
-    except Exception:
+    except Exception as e:
+        st.error(f"Error loading resources: {e}")
         return
 
     # Sidebar for county selection
@@ -86,84 +42,85 @@ def main():
         return
 
     # Filter data for selected county
-    county_mask = df['Income_Distribution_encoded'] == encoded_county
-    if not county_mask.any():
+    county_data = df[df['Income_Distribution_encoded'] == encoded_county]
+    if county_data.empty:
         st.error("No data found for the selected county.")
         return
 
     st.write(f"Data for {selected_county}")
-    st.dataframe(df.loc[county_mask])
+    st.dataframe(county_data)
 
     # Ensure required columns are present
     required_columns = [
         'Pop_Density_2020', 'Wind_Speed', 'Latitude', 'Longitude', 
         'Grid_Value', 'Cluster', 'Stability_Score', 'Income_Distribution_encoded', 'Cluster_Mean_Pop_Density', 'Cluster_Mean_Wind_Speed'
     ]
-    missing_columns = [col for col in required_columns if col not in df.columns]
+    missing_columns = [col for col in required_columns if col not in county_data.columns]
     if missing_columns:
         st.error(f"Missing required columns: {missing_columns}")
         return
 
-    # Align the columns for scaling with validation
+    # Align the columns for scaling
     try:
-        X_numeric = df.loc[county_mask, required_columns]
-        if hasattr(scaler, 'feature_names_in_'):
-            missing_features = set(scaler.feature_names_in_) - set(X_numeric.columns)
-            if missing_features:
-                st.error(f"Missing features required by the scaler: {missing_features}")
-                return
+        X_numeric = county_data[required_columns]
+        st.write("Scaler feature names (training):", scaler.feature_names_in_)
+        st.write("Current input features:", X_numeric.columns.tolist())
         X_scaled = scaler.transform(X_numeric)
-    except Exception as e:
-        st.error(f"Error scaling features: {e}")
+    except ValueError as e:
+        st.error(f"Feature mismatch: {e}")
         return
 
     # Make predictions using the MLP model
     try:
-        if county_mask.any():
-            inputs = {
-                "input_layer": X_scaled,
-                "input_layer_1": df.loc[county_mask, 'Income_Distribution_encoded'].values.reshape(-1, 1)
-            }
-            predictions = predict_with_model(mlp_model, inputs)
-            df.loc[county_mask, 'Electricity_Predicted'] = (predictions > 0.5).astype(int)
-        else:
-            st.error("No data available for predictions.")
-            return
+        predictions = mlp_model.predict([X_scaled, county_data['Income_Distribution_encoded']])
+        county_data['Electricity_Predicted'] = (predictions > 0.5).astype(int)
     except Exception as e:
         st.error(f"Prediction error: {e}")
         return
 
-    # Sidebar for viability parameters
-    grid_proximity_threshold = st.sidebar.slider("Grid Proximity Threshold (km)", 1, 50, 5)
-    wind_speed_threshold = st.sidebar.slider("Wind Speed Threshold (m/s)", 1, 15, 8)
-
     # Viability calculations
-    try:
-        df.loc[county_mask, 'Distance_to_Grid'] = df.loc[county_mask, 'Grid_Value'] * 10  # Example scaling for proximity
+    grid_proximity_threshold = 5  # in kilometers (example threshold)
+    wind_speed_threshold = 8  # in m/s (example threshold for wind viability)
 
-        # Determine viability
-        df.loc[county_mask, 'Viability'] = np.where(
-            (df.loc[county_mask, 'Electricity_Predicted'] == 0) & (df.loc[county_mask, 'Distance_to_Grid'] <= grid_proximity_threshold),
-            "Viable for Grid Extension",
-            np.where(
-                (df.loc[county_mask, 'Electricity_Predicted'] == 0) & (df.loc[county_mask, 'Wind_Speed'] >= wind_speed_threshold),
-                "Viable for Wind Microgrid",
-                "Electrified"
-            )
+    # Calculate distances to grid (simplified for demonstration purposes)
+    county_data['Distance_to_Grid'] = county_data['Grid_Value'] * 10  # Example scaling for proximity
+
+    # Determine viability
+    county_data['Viability'] = np.where(
+        (county_data['Electricity_Predicted'] == 0) & (county_data['Distance_to_Grid'] <= grid_proximity_threshold),
+        "Viable for Grid Extension",
+        np.where(
+            (county_data['Electricity_Predicted'] == 0) & (county_data['Wind_Speed'] >= wind_speed_threshold),
+            "Viable for Wind Microgrid",
+            "Electrified"
         )
-    except Exception as e:
-        st.error(f"Error during viability calculations: {e}")
-        return
+    )
 
     # Display viability results
     st.write("Viability Analysis:")
-    st.dataframe(df.loc[county_mask, ['Latitude', 'Longitude', 'Electricity_Predicted', 'Distance_to_Grid', 'Viability']])
+    st.dataframe(county_data[['Latitude', 'Longitude', 'Electricity_Predicted', 'Distance_to_Grid', 'Viability']])
 
     # Visualize on map
     try:
         st.write("Electrification and Viability Map:")
-        map_data = df.loc[county_mask]
-        folium_map = generate_map(map_data)
+        folium_map = folium.Map(location=[county_data['Latitude'].mean(), county_data['Longitude'].mean()], zoom_start=7)
+        for _, row in county_data.iterrows():
+            if row['Viability'] == "Viable for Grid Extension":
+                color = 'blue'
+            elif row['Viability'] == "Viable for Wind Microgrid":
+                color = 'purple'
+            elif row['Electricity_Predicted'] == 1:
+                color = 'green'
+            else:
+                color = 'red'
+            folium.CircleMarker(
+                location=[row['Latitude'], row['Longitude']],
+                radius=5,
+                color=color,
+                fill=True,
+                fill_opacity=0.7,
+                popup=f"Viability: {row['Viability']}, Prediction: {'Electricity' if row['Electricity_Predicted'] == 1 else 'No Electricity'}"
+            ).add_to(folium_map)
         st_folium(folium_map, width=700)
     except Exception as e:
         st.error(f"Error displaying map: {e}")

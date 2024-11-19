@@ -10,15 +10,26 @@ import joblib
 @st.cache_resource
 def load_models():
     """Load scaler, label encoder, and MLP model."""
-    scaler = joblib.load("models/scaler.pkl")
-    label_encoder = joblib.load("models/label_encoder.pkl")
-    mlp_model = load_model("models/mlp_model.h5")
-    return scaler, label_encoder, mlp_model
+    try:
+        scaler = joblib.load("models/scaler.pkl")
+        label_encoder = joblib.load("models/label_encoder.pkl")
+        
+        # Load the model without recompiling to prevent retraining
+        mlp_model = load_model("models/mlp_model.h5", compile=False)
+        
+        return scaler, label_encoder, mlp_model
+    except Exception as e:
+        st.error(f"Error loading models: {e}")
+        raise
 
 @st.cache_data
 def load_data():
     """Load the dataset."""
-    return pd.read_csv("data/final_df.csv")
+    try:
+        return pd.read_csv("data/final_df.csv")
+    except Exception as e:
+        st.error(f"Error loading dataset: {e}")
+        raise
 
 def main():
     st.title("Electricity Access and Microgrid Viability")
@@ -28,8 +39,7 @@ def main():
     try:
         scaler, label_encoder, mlp_model = load_models()
         df = load_data()
-    except Exception as e:
-        st.error(f"Error loading resources: {e}")
+    except Exception:
         return
 
     # Sidebar for county selection

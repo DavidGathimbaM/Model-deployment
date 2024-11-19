@@ -21,7 +21,7 @@ def load_models():
         scaler = joblib.load("models/scaler.pkl")
         label_encoder = joblib.load("models/label_encoder.pkl")
         # Load the model without recompiling
-        mlp_model = load_model("models/mlp_model_inference.h5", compile=False)
+        mlp_model = load_model("models/mlp_model.h5", compile=False)
         return scaler, label_encoder, mlp_model
     except Exception as e:
         st.error(f"Error loading models: {e}")

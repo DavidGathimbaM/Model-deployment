@@ -60,14 +60,17 @@ def main():
         st.error(f"Missing required columns: {missing_columns}")
         return
 
-    # Align the columns for scaling
+    # Align the columns for scaling with validation
     try:
         X_numeric = county_data[required_columns]
-        st.write("Scaler feature names (training):", scaler.feature_names_in_)
-        st.write("Current input features:", X_numeric.columns.tolist())
+        if hasattr(scaler, 'feature_names_in_'):
+            missing_features = set(scaler.feature_names_in_) - set(X_numeric.columns)
+            if missing_features:
+                st.error(f"Missing features required by the scaler: {missing_features}")
+                return
         X_scaled = scaler.transform(X_numeric)
-    except ValueError as e:
-        st.error(f"Feature mismatch: {e}")
+    except Exception as e:
+        st.error(f"Error scaling features: {e}")
         return
 
     # Make predictions using the MLP model
@@ -78,11 +81,11 @@ def main():
         st.error(f"Prediction error: {e}")
         return
 
-    # Viability calculations
-    grid_proximity_threshold = 5  # in kilometers (example threshold)
-    wind_speed_threshold = 8  # in m/s (example threshold for wind viability)
+    # Sidebar for viability parameters
+    grid_proximity_threshold = st.sidebar.slider("Grid Proximity Threshold (km)", 1, 50, 5)
+    wind_speed_threshold = st.sidebar.slider("Wind Speed Threshold (m/s)", 1, 15, 8)
 
-    # Calculate distances to grid (simplified for demonstration purposes)
+    # Viability calculations
     county_data['Distance_to_Grid'] = county_data['Grid_Value'] * 10  # Example scaling for proximity
 
     # Determine viability
@@ -121,6 +124,22 @@ def main():
                 fill_opacity=0.7,
                 popup=f"Viability: {row['Viability']}, Prediction: {'Electricity' if row['Electricity_Predicted'] == 1 else 'No Electricity'}"
             ).add_to(folium_map)
+
+        # Add a legend to the map
+        legend_html = """
+        <div style="position: fixed; 
+                    bottom: 50px; left: 50px; width: 200px; height: 120px; 
+                    background-color: white; z-index:1000; font-size:14px;
+                    border:2px solid grey; border-radius:8px; padding:10px;">
+            <b>Map Legend</b><br>
+            <i style="background: green; width: 10px; height: 10px; display: inline-block;"></i> Electrified<br>
+            <i style="background: blue; width: 10px; height: 10px; display: inline-block;"></i> Grid Extension<br>
+            <i style="background: purple; width: 10px; height: 10px; display: inline-block;"></i> Wind Microgrid<br>
+            <i style="background: red; width: 10px; height: 10px; display: inline-block;"></i> No Electricity<br>
+        </div>
+        """
+        folium_map.get_root().html.add_child(folium.Element(legend_html))
+
         st_folium(folium_map, width=700)
     except Exception as e:
         st.error(f"Error displaying map: {e}")

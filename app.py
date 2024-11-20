@@ -25,13 +25,13 @@ scaler, label_encoder, mlp_model = load_resources()
 # App title
 st.title("Electrification Viability Analysis Tool")
 
-# Automatically load dataset from GitHub
+# Automatically load dataset
 @st.cache_resource
 def load_dataset():
     # Replace the URL below with your GitHub raw dataset link
-    dataset_url = "https://raw.githubusercontent.com/your-github-username/your-repository/main/your-dataset.csv"
+    # dataset_url = "https://raw.githubusercontent.com/your-github-username/your-repository/main/your-dataset.csv"
     try:
-        df = pd.read_csv(dataset_url)
+        df = pd.read_csv("final_df.csv))
         return df
     except Exception as e:
         st.error(f"Error loading dataset: {e}")

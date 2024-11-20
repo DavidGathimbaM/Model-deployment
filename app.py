@@ -83,9 +83,9 @@ def main():
     county_data['Distance_to_Point'] = county_data.apply(calculate_distance, axis=1, args=(user_coords,))
     nearest_points = county_data.nsmallest(2, 'Distance_to_Point')
 
-    # Calculate mean wind speed and grid distance for the input point
+    # Calculate mean wind speed and distance to the grid
     mean_wind_speed = nearest_points['Wind_Speed'].mean()
-    grid_distance = nearest_points['Grid_Value'].iloc[0] * 10  # Convert Grid_Value scale to kilometers
+    grid_distance = nearest_points['Grid_Value'].min() * 10  # Convert Grid_Value scale to kilometers
 
     st.sidebar.write(f"**Mean Wind Speed (Nearest Points):** {mean_wind_speed:.2f} m/s")
     st.sidebar.write(f"**Distance to Nearest Grid:** {grid_distance:.2f} km")
@@ -103,10 +103,32 @@ def main():
     
     st.sidebar.write(f"### Viability for Input Point: {viability}")
 
+    # Calculate distances to grid for the dataset
+    county_data['Distance_to_Grid'] = county_data['Grid_Value'] * 10  # Convert scale to km
+
+    # Determine viability for the dataset
+    county_data['Viability'] = np.where(
+        (county_data['Electricity_Predicted'] == 0) & (county_data['Distance_to_Grid'] <= grid_proximity_threshold),
+        "Viable for Grid Extension",
+        np.where(
+            (county_data['Electricity_Predicted'] == 0) & (county_data['Wind_Speed'] > wind_speed_threshold),
+            "Viable for Wind Microgrid",
+            "Electrified"
+        )
+    )
+
+    # Display viability results
+    st.write("Viability Analysis:")
+    st.dataframe(county_data[['Latitude', 'Longitude', 'Electricity_Predicted', 'Distance_to_Grid', 'Viability']])
+
     # Visualize on map
     st.write("Electrification and Viability Map:")
     try:
-        folium_map = folium.Map(location=[county_data['Latitude'].mean(), county_data['Longitude'].mean()], zoom_start=7)
+        folium_map = folium.Map(
+            location=[county_data['Latitude'].mean(), county_data['Longitude'].mean()],
+            zoom_start=7,
+            tiles="Stamen Terrain"  # Alternative to OSM
+        )
 
         # Add user-input point
         folium.Marker(
@@ -119,12 +141,14 @@ def main():
 
         # Add county points
         for _, row in county_data.iterrows():
-            if row['Distance_to_Grid'] <= grid_proximity_threshold:
+            if row['Viability'] == "Viable for Grid Extension":
                 color = 'blue'
-            elif row['Wind_Speed'] > wind_speed_threshold:
+            elif row['Viability'] == "Viable for Wind Microgrid":
                 color = 'purple'
+            elif row['Electricity_Predicted'] == 1:
+                color = 'green'
             else:
-                color = 'green' if row['Electricity_Predicted'] == 1 else 'red'
+                color = 'red'
 
             folium.CircleMarker(
                 location=[row['Latitude'], row['Longitude']],

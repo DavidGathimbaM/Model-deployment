@@ -12,9 +12,9 @@ from geopy.distance import geodesic
 @st.cache_resource
 def load_resources():
     try:
-        scaler = pickle.load(open("scaler.pkl", "rb"))
-        label_encoder = pickle.load(open("label_encoder.pkl", "rb"))
-        mlp_model = load_model("mlp_model.h5")
+        scaler = pickle.load(open("models/scaler.pkl", "rb"))
+        label_encoder = pickle.load(open("models/label_encoder.pkl", "rb"))
+        mlp_model = load_model("models/mlp_model.h5")
     except FileNotFoundError as e:
         st.error(f"File not found: {e.filename}. Please upload the required model files.")
         st.stop()
@@ -45,7 +45,7 @@ st.dataframe(df.head())
 
 # Columns required for analysis
 required_columns = ['Pop_Density_2020', 'Wind_Speed', 'Latitude', 'Longitude', 
-                    'Grid_Value', 'Income_Distribution_encoded', 'Stability_Score']
+        'Grid_Value', 'Cluster', 'Stability_Score', 'Income_Distribution_encoded', 'Cluster_Mean_Pop_Density', 'Cluster_Mean_Wind_Speed']
 
 # Ensure required columns are present
 missing_columns = [col for col in required_columns if col not in df.columns]

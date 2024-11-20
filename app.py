@@ -6,6 +6,7 @@ from streamlit_folium import st_folium
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from tensorflow.keras.models import load_model
 import joblib
+from geopy.distance import geodesic
 
 @st.cache_resource
 def load_models():
@@ -27,6 +28,10 @@ def load_data():
     except FileNotFoundError as e:
         st.error(f"Dataset not found: {e}")
         st.stop()
+
+def calculate_distance(row, user_coords):
+    """Calculate geodesic distance for a given row."""
+    return geodesic(user_coords, (row['Latitude'], row['Longitude'])).km
 
 def main():
     st.title("Electricity Access and Microgrid Viability")
@@ -68,68 +73,59 @@ def main():
         st.error(f"Scaler feature mismatch: {e}")
         return
 
-    # Make predictions using the MLP model
-    try:
-        predictions = mlp_model.predict([X_scaled, county_data['Income_Distribution_encoded']])
-        county_data['Electricity_Predicted'] = (predictions > 0.5).astype(int)
-    except Exception as e:
-        st.error(f"Prediction error: {e}")
-        return
-
-    # Viability calculations
-    grid_proximity_threshold = 3  # Grid proximity in Grid_Value scale (1 = 10 km)
-    wind_speed_threshold = 6.5  # Wind speed threshold in m/s
-
-    # Calculate distances to grid
-    county_data['Distance_to_Grid'] = county_data['Grid_Value'] * 10  # Convert scale to km
-
-    # Determine viability
-    county_data['Viability'] = np.where(
-        (county_data['Electricity_Predicted'] == 0) & (county_data['Grid_Value'] <= grid_proximity_threshold),
-        "Viable for Grid Extension",
-        np.where(
-            (county_data['Electricity_Predicted'] == 0) & (county_data['Wind_Speed'] > wind_speed_threshold),
-            "Viable for Wind Microgrid",
-            "Electrified"
-        )
-    )
-
     # User Input for Latitude and Longitude
     st.sidebar.write("### Check Viability for a Specific Point")
     user_lat = st.sidebar.number_input("Enter Latitude", value=county_data['Latitude'].mean())
     user_lon = st.sidebar.number_input("Enter Longitude", value=county_data['Longitude'].mean())
-    user_wind_speed = st.sidebar.number_input("Enter Wind Speed (m/s)", value=6.0)
-    user_distance_to_grid = st.sidebar.number_input("Enter Distance to Grid (in Grid_Value scale)", value=3)
+
+    # Calculate nearest points for user input
+    user_coords = (user_lat, user_lon)
+    county_data['Distance_to_Point'] = county_data.apply(calculate_distance, axis=1, args=(user_coords,))
+    nearest_points = county_data.nsmallest(2, 'Distance_to_Point')
+
+    # Calculate mean wind speed and grid distance for the input point
+    mean_wind_speed = nearest_points['Wind_Speed'].mean()
+    grid_distance = nearest_points['Grid_Value'].iloc[0] * 10  # Convert Grid_Value scale to kilometers
+
+    st.sidebar.write(f"**Mean Wind Speed (Nearest Points):** {mean_wind_speed:.2f} m/s")
+    st.sidebar.write(f"**Distance to Nearest Grid:** {grid_distance:.2f} km")
 
     # Viability for User Input
-    if st.sidebar.button("Check Viability"):
-        if user_distance_to_grid <= grid_proximity_threshold:
-            viability = "Viable for Grid Extension"
-        elif user_wind_speed > wind_speed_threshold:
-            viability = "Viable for Wind Microgrid"
-        else:
-            viability = "Not Viable"
-        
-        st.sidebar.write(f"### Viability for Input Point: {viability}")
-        st.sidebar.map(pd.DataFrame({'lat': [user_lat], 'lon': [user_lon]}))
+    grid_proximity_threshold = 3  # in kilometers
+    wind_speed_threshold = 6.5  # in m/s
 
-    # Display viability results
-    st.write("Viability Analysis:")
-    st.dataframe(county_data[['Latitude', 'Longitude', 'Electricity_Predicted', 'Distance_to_Grid', 'Viability']])
+    if grid_distance <= grid_proximity_threshold:
+        viability = "Viable for Grid Extension"
+    elif mean_wind_speed > wind_speed_threshold:
+        viability = "Viable for Wind Microgrid"
+    else:
+        viability = "Not Viable"
+    
+    st.sidebar.write(f"### Viability for Input Point: {viability}")
 
     # Visualize on map
     st.write("Electrification and Viability Map:")
     try:
         folium_map = folium.Map(location=[county_data['Latitude'].mean(), county_data['Longitude'].mean()], zoom_start=7)
+
+        # Add user-input point
+        folium.Marker(
+            location=[user_lat, user_lon],
+            popup=(f"Input Point<br>Viability: {viability}<br>"
+                   f"Mean Wind Speed: {mean_wind_speed:.2f} m/s<br>"
+                   f"Distance to Grid: {grid_distance:.2f} km"),
+            icon=folium.Icon(color="orange")
+        ).add_to(folium_map)
+
+        # Add county points
         for _, row in county_data.iterrows():
-            if row['Viability'] == "Viable for Grid Extension":
+            if row['Distance_to_Grid'] <= grid_proximity_threshold:
                 color = 'blue'
-            elif row['Viability'] == "Viable for Wind Microgrid":
+            elif row['Wind_Speed'] > wind_speed_threshold:
                 color = 'purple'
-            elif row['Electricity_Predicted'] == 1:
-                color = 'green'
             else:
-                color = 'red'
+                color = 'green' if row['Electricity_Predicted'] == 1 else 'red'
+
             folium.CircleMarker(
                 location=[row['Latitude'], row['Longitude']],
                 radius=5,
@@ -141,6 +137,7 @@ def main():
                        f"Distance to Grid: {row['Distance_to_Grid']} km<br>"
                        f"Wind Speed: {row['Wind_Speed']} m/s")
             ).add_to(folium_map)
+
         st_folium(folium_map, width=700)
     except Exception as e:
         st.error(f"Error displaying map: {e}")

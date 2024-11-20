@@ -31,7 +31,7 @@ def load_dataset():
     # Replace the URL below with your GitHub raw dataset link
     # dataset_url = "https://raw.githubusercontent.com/your-github-username/your-repository/main/your-dataset.csv"
     try:
-        df = pd.read_csv("final_df.csv")
+        df = pd.read_csv("data/final_df.csv")
         return df
     except Exception as e:
         st.error(f"Error loading dataset: {e}")

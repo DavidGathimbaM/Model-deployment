@@ -71,7 +71,7 @@ def main():
 
     # Make predictions using the MLP model
     try:
-        predictions = mlp_model.predict(X_scaled)
+        predictions = mlp_model.predict([X_scaled, county_data['Income_Distribution_encoded']])
         county_data['Electricity_Predicted'] = (predictions > 0.5).astype(int)
     except Exception as e:
         st.error(f"Prediction error: {e}")

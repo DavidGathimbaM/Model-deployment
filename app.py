@@ -8,100 +8,126 @@ from tensorflow.keras.models import load_model
 import joblib
 from geopy.distance import geodesic
 
-# Load pre-trained models and scaler
 @st.cache_resource
-def load_resources():
+def load_models():
+    """Load scaler, label encoder, and MLP model."""
     try:
-        scaler = pickle.load(open("models/scaler.pkl", "rb"))
-        label_encoder = pickle.load(open("models/label_encoder.pkl", "rb"))
+        scaler = joblib.load("models/scaler.pkl")
+        label_encoder = joblib.load("models/label_encoder.pkl")
         mlp_model = load_model("models/mlp_model.h5")
+        return scaler, label_encoder, mlp_model
     except FileNotFoundError as e:
-        st.error(f"File not found: {e.filename}. Please upload the required model files.")
+        st.error(f"Model files not found: {e}")
         st.stop()
-    return scaler, label_encoder, mlp_model
 
-scaler, label_encoder, mlp_model = load_resources()
-
-# App title
-st.title("Electrification Viability Analysis Tool")
-
-# Automatically load dataset
-@st.cache_resource
-def load_dataset():
-    # Replace the URL below with your GitHub raw dataset link
-    # dataset_url = "https://raw.githubusercontent.com/your-github-username/your-repository/main/your-dataset.csv"
+@st.cache_data
+def load_data():
+    """Load the dataset."""
     try:
-        df = pd.read_csv("data/final_df.csv")
-        return df
-    except Exception as e:
-        st.error(f"Error loading dataset: {e}")
+        return pd.read_csv("data/final_df.csv")
+    except FileNotFoundError as e:
+        st.error(f"Dataset not found: {e}")
         st.stop()
 
-df = load_dataset()
+def main():
+    st.title("Electricity Access and Microgrid Viability")
+    st.write("Explore electricity access predictions and clustering insights.")
+    
+    # Load models and data
+    scaler, label_encoder, mlp_model = load_models()
+    df = load_data()
 
-# Display dataset preview
-st.write("Dataset Preview:")
-st.dataframe(df.head())
+    # Sidebar for county selection
+    counties = label_encoder.classes_
+    selected_county = st.sidebar.selectbox("Select a County", counties)
+    encoded_county = label_encoder.transform([selected_county])[0]
 
-# Columns required for analysis
-required_columns = ['Pop_Density_2020', 'Wind_Speed', 'Latitude', 'Longitude', 
-        'Grid_Value', 'Cluster', 'Stability_Score', 'Income_Distribution_encoded', 'Cluster_Mean_Pop_Density', 'Cluster_Mean_Wind_Speed']
+    # Filter data for selected county
+    county_data = df[df['Income_Distribution_encoded'] == encoded_county]
+    if county_data.empty:
+        st.error("No data found for the selected county.")
+        return
 
-# Ensure required columns are present
-missing_columns = [col for col in required_columns if col not in df.columns]
-if missing_columns:
-    st.error(f"The following required columns are missing: {', '.join(missing_columns)}")
-else:
-    # Extract required features and standardize them
-    clustering_data = df[required_columns]
-    clustering_data_scaled = scaler.transform(clustering_data)
+    st.write(f"Data for {selected_county}")
+    st.dataframe(county_data)
+
+    # Ensure required columns are present
+    required_columns = [
+        'Pop_Density_2020', 'Wind_Speed', 'Latitude', 'Longitude', 
+        'Grid_Value', 'Income_Distribution_encoded'
+    ]
+    missing_columns = [col for col in required_columns if col not in county_data.columns]
+    if missing_columns:
+        st.error(f"Missing required columns: {missing_columns}")
+        return
+
+    # Align the columns for scaling
+    X_numeric = county_data[required_columns]
+    try:
+        X_scaled = scaler.transform(X_numeric)
+    except ValueError as e:
+        st.error(f"Scaler feature mismatch: {e}")
+        return
 
     # Make predictions using the MLP model
-    predictions = mlp_model.predict(clustering_data_scaled)
-    df['Electricity_Predicted'] = (predictions > 0.5).astype(int)
+    try:
+        predictions = mlp_model.predict(X_scaled)
+        county_data['Electricity_Predicted'] = (predictions > 0.5).astype(int)
+    except Exception as e:
+        st.error(f"Prediction error: {e}")
+        return
 
-    # User Input Section
-    st.header("Input a Specific Location for Viability Analysis")
+    # Viability calculations
+    grid_proximity_threshold = 3  # Grid proximity in Grid_Value scale (1 = 10 km)
+    wind_speed_threshold = 6.5  # Wind speed threshold in m/s
 
-    latitude_input = st.number_input("Enter Latitude:", value=0.0, format="%.6f")
-    longitude_input = st.number_input("Enter Longitude:", value=0.0, format="%.6f")
+    # Calculate distances to grid
+    county_data['Distance_to_Grid'] = county_data['Grid_Value'] * 10  # Convert scale to km
 
-    # If user inputs both latitude and longitude
-    if latitude_input != 0.0 and longitude_input != 0.0:
-        # Calculate distance to grid for the input point
-        distances = df.apply(
-            lambda row: geodesic((latitude_input, longitude_input), (row['Latitude'], row['Longitude'])).km,
-            axis=1
+    # Determine viability
+    county_data['Viability'] = np.where(
+        (county_data['Electricity_Predicted'] == 0) & (county_data['Grid_Value'] <= grid_proximity_threshold),
+        "Viable for Grid Extension",
+        np.where(
+            (county_data['Electricity_Predicted'] == 0) & (county_data['Wind_Speed'] > wind_speed_threshold),
+            "Viable for Wind Microgrid",
+            "Electrified"
         )
-        nearest_distance = distances.min()
+    )
 
-        # Retrieve wind speed for the closest point in the dataset
-        nearest_point = df.iloc[distances.idxmin()]
-        wind_speed_at_point = nearest_point['Wind_Speed']
+    # Display viability results
+    st.write("Viability Analysis:")
+    st.dataframe(county_data[['Latitude', 'Longitude', 'Electricity_Predicted', 'Distance_to_Grid', 'Viability']])
 
-        # Decision Logic for Viability
-        if nearest_distance > 3 and wind_speed_at_point > 6.5:
-            viability = "Viable for Wind Microgrid"
-        elif nearest_distance <= 3:
-            viability = "Viable for Grid Extension"
-        else:
-            viability = "Not Viable"
-
-        # Display Results
-        st.write(f"### Viability Analysis for Location ({latitude_input}, {longitude_input}):")
-        st.write(f"- **Nearest Grid Distance**: {nearest_distance:.2f} km")
-        st.write(f"- **Wind Speed at Point**: {wind_speed_at_point:.2f} m/s")
-        st.write(f"- **Viability**: {viability}")
-
-        # Map Visualization for the Input Point
-        st.write("Location and Viability Map:")
-        folium_map = folium.Map(location=[latitude_input, longitude_input], zoom_start=10)
-
-        # Add input point to the map
-        folium.Marker(
-            location=[latitude_input, longitude_input],
-            popup=f"Viability: {viability}<br>Nearest Grid Distance: {nearest_distance:.2f} km<br>Wind Speed: {wind_speed_at_point:.2f} m/s",
-            icon=folium.Icon(color="blue" if viability == "Viable for Grid Extension" else "green" if viability == "Viable for Wind Microgrid" else "red")
-        ).add_to(folium_map)
-
+    # Visualize on map
+    st.write("Electrification and Viability Map:")
+    try:
+        folium_map = folium.Map(location=[county_data['Latitude'].mean(), county_data['Longitude'].mean()], zoom_start=7)
+        for _, row in county_data.iterrows():
+            if row['Viability'] == "Viable for Grid Extension":
+                color = 'blue'
+            elif row['Viability'] == "Viable for Wind Microgrid":
+                color = 'purple'
+            elif row['Electricity_Predicted'] == 1:
+                color = 'green'
+            else:
+                color = 'red'
+            folium.CircleMarker(
+                location=[row['Latitude'], row['Longitude']],
+                radius=5,
+                color=color,
+                fill=True,
+                fill_opacity=0.7,
+                popup=(
+                    f"Viability: {row['Viability']}<br>"
+                    f"Electricity: {'Yes' if row['Electricity_Predicted'] == 1 else 'No'}<br>"
+                    f"Distance to Grid: {row['Distance_to_Grid']} km<br>"
+                    f"Wind Speed: {row['Wind_Speed']} m/s"
+                )
+            ).add_to(folium_map)
         st_folium(folium_map, width=700)
+    except Exception as e:
+        st.error(f"Error displaying map: {e}")
+
+if __name__ == "__main__":
+    main()

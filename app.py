@@ -132,7 +132,8 @@ def main():
         folium_map = folium.Map(
             location=[county_data['Latitude'].mean(), county_data['Longitude'].mean()],
             zoom_start=7,
-            tiles="Stamen Terrain"  # Alternative to OSM
+            tiles="https://stamen-tiles.a.ssl.fastly.net/terrain/{z}/{x}/{y}.jpg",
+            attr="Map tiles by Stamen Design, under CC BY 3.0. Data by OpenStreetMap, under ODbL."
         )
 
         # Add user-input point

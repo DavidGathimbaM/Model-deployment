@@ -10,3 +10,4 @@ joblib
 Cython
 setuptools
 wheel
+geopy

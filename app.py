@@ -6,7 +6,6 @@ from streamlit_folium import st_folium
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from tensorflow.keras.models import load_model
 import joblib
-from geopy.distance import geodesic
 
 @st.cache_resource
 def load_models():
@@ -71,7 +70,7 @@ def main():
 
     # Make predictions using the MLP model
     try:
-        predictions = mlp_model.predict([X_scaled, county_data['Income_Distribution_encoded']])
+        predictions = mlp_model.predict(X_scaled)
         county_data['Electricity_Predicted'] = (predictions > 0.5).astype(int)
     except Exception as e:
         st.error(f"Prediction error: {e}")
@@ -94,6 +93,25 @@ def main():
             "Electrified"
         )
     )
+
+    # User Input for Latitude and Longitude
+    st.sidebar.write("### Check Viability for a Specific Point")
+    user_lat = st.sidebar.number_input("Enter Latitude", value=county_data['Latitude'].mean())
+    user_lon = st.sidebar.number_input("Enter Longitude", value=county_data['Longitude'].mean())
+    user_wind_speed = st.sidebar.number_input("Enter Wind Speed (m/s)", value=6.0)
+    user_distance_to_grid = st.sidebar.number_input("Enter Distance to Grid (in Grid_Value scale)", value=3)
+
+    # Viability for User Input
+    if st.sidebar.button("Check Viability"):
+        if user_distance_to_grid <= grid_proximity_threshold:
+            viability = "Viable for Grid Extension"
+        elif user_wind_speed > wind_speed_threshold:
+            viability = "Viable for Wind Microgrid"
+        else:
+            viability = "Not Viable"
+        
+        st.sidebar.write(f"### Viability for Input Point: {viability}")
+        st.sidebar.map(pd.DataFrame({'lat': [user_lat], 'lon': [user_lon]}))
 
     # Display viability results
     st.write("Viability Analysis:")
@@ -118,12 +136,10 @@ def main():
                 color=color,
                 fill=True,
                 fill_opacity=0.7,
-                popup=(
-                    f"Viability: {row['Viability']}<br>"
-                    f"Electricity: {'Yes' if row['Electricity_Predicted'] == 1 else 'No'}<br>"
-                    f"Distance to Grid: {row['Distance_to_Grid']} km<br>"
-                    f"Wind Speed: {row['Wind_Speed']} m/s"
-                )
+                popup=(f"Viability: {row['Viability']}<br>"
+                       f"Electricity: {'Yes' if row['Electricity_Predicted'] == 1 else 'No'}<br>"
+                       f"Distance to Grid: {row['Distance_to_Grid']} km<br>"
+                       f"Wind Speed: {row['Wind_Speed']} m/s")
             ).add_to(folium_map)
         st_folium(folium_map, width=700)
     except Exception as e:

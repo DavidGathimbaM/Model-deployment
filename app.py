@@ -5,7 +5,7 @@ import folium
 from streamlit_folium import st_folium
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from tensorflow.keras.models import load_model
-import pickle
+import joblib
 from geopy.distance import geodesic
 
 # Load pre-trained models and scaler

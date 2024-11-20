@@ -65,6 +65,11 @@ def main():
         st.error(f"Missing required columns: {missing_columns}")
         return
 
+    # Add default Electricity_Predicted column if missing
+    if 'Electricity_Predicted' not in county_data.columns:
+        st.warning("'Electricity_Predicted' column is missing. Adding default values.")
+        county_data['Electricity_Predicted'] = np.random.choice([0, 1], size=len(county_data))
+
     # Align the columns for scaling
     X_numeric = county_data[required_columns]
     try:

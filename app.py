@@ -126,17 +126,17 @@ def main():
     st.write("Viability Analysis:")
     st.dataframe(county_data[['Latitude', 'Longitude', 'Electricity_Predicted', 'Distance_to_Grid', 'Viability']])
 
-    # Visualize on map
-    st.write("Electrification and Viability Map:")
+    # Visualize on map using CartoDB Positron
     try:
+        # Initialize map with CartoDB Positron tiles
         folium_map = folium.Map(
             location=[county_data['Latitude'].mean(), county_data['Longitude'].mean()],
-            zoom_start=7,
-            tiles="https://stamen-tiles.a.ssl.fastly.net/terrain/{z}/{x}/{y}.jpg",
-            attr="Map tiles by Stamen Design, under CC BY 3.0. Data by OpenStreetMap, under ODbL."
+            zoom_start=8,
+            tiles="CartoDB Positron",
+            attr="Map tiles by CartoDB, under CC BY 3.0. Data by OpenStreetMap, under ODbL."
         )
 
-        # Add user-input point
+        # Add user-input point as a marker
         folium.Marker(
             location=[user_lat, user_lon],
             popup=(f"Input Point<br>Viability: {viability}<br>"
@@ -145,29 +145,32 @@ def main():
             icon=folium.Icon(color="orange")
         ).add_to(folium_map)
 
-        # Add county points
+        # Plot all county points on the map
         for _, row in county_data.iterrows():
-            if row['Viability'] == "Viable for Grid Extension":
-                color = 'blue'
-            elif row['Viability'] == "Viable for Wind Microgrid":
-                color = 'purple'
-            elif row['Electricity_Predicted'] == 1:
-                color = 'green'
-            else:
-                color = 'red'
+            if pd.notnull(row['Latitude']) and pd.notnull(row['Longitude']):
+                if row['Viability'] == "Viable for Grid Extension":
+                    color = 'blue'
+                elif row['Viability'] == "Viable for Wind Microgrid":
+                    color = 'purple'
+                elif row['Electricity_Predicted'] == 1:
+                    color = 'green'
+                else:
+                    color = 'red'
 
-            folium.CircleMarker(
-                location=[row['Latitude'], row['Longitude']],
-                radius=5,
-                color=color,
-                fill=True,
-                fill_opacity=0.7,
-                popup=(f"Viability: {row['Viability']}<br>"
-                       f"Electricity: {'Yes' if row['Electricity_Predicted'] == 1 else 'No'}<br>"
-                       f"Distance to Grid: {row['Distance_to_Grid']} km<br>"
-                       f"Wind Speed: {row['Wind_Speed']} m/s")
-            ).add_to(folium_map)
+                folium.CircleMarker(
+                    location=[row['Latitude'], row['Longitude']],
+                    radius=3,
+                    color=color,
+                    fill=True,
+                    fill_color=color,
+                    fill_opacity=0.5,
+                    popup=(f"Viability: {row['Viability']}<br>"
+                           f"Electricity: {'Yes' if row['Electricity_Predicted'] == 1 else 'No'}<br>"
+                           f"Distance to Grid: {row['Distance_to_Grid']:.2f} km<br>"
+                           f"Wind Speed: {row['Wind_Speed']:.2f} m/s")
+                ).add_to(folium_map)
 
+        # Render the map
         st_folium(folium_map, width=700)
     except Exception as e:
         st.error(f"Error displaying map: {e}")

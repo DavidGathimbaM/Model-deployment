@@ -94,8 +94,8 @@ def main():
     st.sidebar.write(f"**Distance to Nearest Grid:** {grid_distance:.2f} km")
 
     # Determine viability for the user-input point
-    grid_proximity_threshold = 5  # in kilometers
-    wind_speed_threshold = 6.5  # in m/s
+    grid_proximity_threshold = 20  # in kilometers
+    wind_speed_threshold = 6.0  # in m/s
 
     if grid_distance <= grid_proximity_threshold:
         viability = "Viable for Grid Extension"
@@ -115,7 +115,7 @@ def main():
 
         # Add cluster points
         for _, row in county_data.iterrows():
-            color = 'blue' if row['Cluster'] == 1 else 'green' if row['Cluster'] == 2 else 'red'
+            color = 'blue' if row['Cluster'] == 1 else 'red' if row['Cluster'] == 2 else 'green'
             folium.CircleMarker(
                 location=[row['Latitude'], row['Longitude']],
                 radius=5,

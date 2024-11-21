@@ -65,11 +65,6 @@ def main():
         st.error(f"Missing required columns: {missing_columns}")
         return
 
-    # Add default Electricity_Predicted column if missing
-    if 'Electricity_Predicted' not in county_data.columns:
-        st.warning("'Electricity_Predicted' column is missing. Adding default values.")
-        county_data['Electricity_Predicted'] = np.random.choice([0, 1], size=len(county_data))
-
     # Align the columns for scaling
     X_numeric = county_data[required_columns]
     try:
@@ -108,10 +103,8 @@ def main():
     
     st.sidebar.write(f"### Viability for Input Point: {viability}")
 
-    # Calculate distances to grid for the dataset
+    # Update viability in the dataset
     county_data['Distance_to_Grid'] = county_data['Grid_Value'] * 10  # Convert scale to km
-
-    # Determine viability for the dataset
     county_data['Viability'] = np.where(
         (county_data['Electricity_Predicted'] == 0) & (county_data['Distance_to_Grid'] <= grid_proximity_threshold),
         "Viable for Grid Extension",
@@ -128,7 +121,6 @@ def main():
 
     # Visualize on map using CartoDB Positron
     try:
-        # Initialize map with CartoDB Positron tiles
         folium_map = folium.Map(
             location=[county_data['Latitude'].mean(), county_data['Longitude'].mean()],
             zoom_start=8,
@@ -148,15 +140,7 @@ def main():
         # Plot all county points on the map
         for _, row in county_data.iterrows():
             if pd.notnull(row['Latitude']) and pd.notnull(row['Longitude']):
-                if row['Viability'] == "Viable for Grid Extension":
-                    color = 'blue'
-                elif row['Viability'] == "Viable for Wind Microgrid":
-                    color = 'purple'
-                elif row['Electricity_Predicted'] == 1:
-                    color = 'green'
-                else:
-                    color = 'red'
-
+                color = 'blue' if row['Viability'] == "Viable for Grid Extension" else 'purple' if row['Viability'] == "Viable for Wind Microgrid" else 'green' if row['Electricity_Predicted'] == 1 else 'red'
                 folium.CircleMarker(
                     location=[row['Latitude'], row['Longitude']],
                     radius=3,

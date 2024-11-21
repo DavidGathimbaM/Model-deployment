@@ -32,8 +32,8 @@ def calculate_distance(row, user_coords):
     return geodesic(user_coords, (row['Latitude'], row['Longitude'])).km
 
 def main():
-    st.title("Electricity Access and Microgrid Viability")
-    st.write("Explore electricity access predictions and determine viability for specific locations.")
+    st.title("Electricity Access and Microgrid Viability with Clustering")
+    st.write("Explore clustering insights and determine viability for specific locations.")
 
     # Load models and data
     try:
@@ -106,9 +106,29 @@ def main():
 
     st.sidebar.write(f"### Viability for Input Point: {viability}")
 
-    # Visualize input point on map
+    # Visualize clusters and user input point on the map
     try:
-        folium_map = folium.Map(location=[user_lat, user_lon], zoom_start=8)
+        # Initialize map with clusters and user input point
+        lat_mean = county_data['Latitude'].mean()
+        lon_mean = county_data['Longitude'].mean()
+        folium_map = folium.Map(location=[lat_mean, lon_mean], zoom_start=8)
+
+        # Add cluster points
+        for _, row in county_data.iterrows():
+            color = 'blue' if row['Cluster'] == 1 else 'green' if row['Cluster'] == 2 else 'red'
+            folium.CircleMarker(
+                location=[row['Latitude'], row['Longitude']],
+                radius=5,
+                color=color,
+                fill=True,
+                fill_opacity=0.7,
+                popup=(f"Cluster: {row['Cluster']}<br>"
+                       f"Wind Speed: {row['Wind_Speed']:.2f} m/s<br>"
+                       f"Grid Value: {row['Grid_Value']}<br>"
+                       f"Distance to Grid: {row['Grid_Value'] * 10:.2f} km")
+            ).add_to(folium_map)
+
+        # Add user-input point as a marker
         folium.Marker(
             location=[user_lat, user_lon],
             popup=(f"Input Point<br>Viability: {viability}<br>"
@@ -117,21 +137,7 @@ def main():
             icon=folium.Icon(color="orange")
         ).add_to(folium_map)
 
-        # Add only the nearest points to the map
-        for _, row in nearest_points.iterrows():
-            color = 'blue' if row['Grid_Value'] <= grid_proximity_threshold else 'purple' if row['Wind_Speed'] >= wind_speed_threshold else 'red'
-            folium.CircleMarker(
-                location=[row['Latitude'], row['Longitude']],
-                radius=6,
-                color=color,
-                fill=True,
-                fill_opacity=0.5,
-                popup=(f"Wind Speed: {row['Wind_Speed']} m/s<br>"
-                       f"Grid Value: {row['Grid_Value']}<br>"
-                       f"Distance to User: {row['Distance_to_User']:.2f} km")
-            ).add_to(folium_map)
-
-        st.write("Location and Viability Map:")
+        st.write("Location and Cluster Map:")
         st_folium(folium_map, width=700)
     except Exception as e:
         st.error(f"Error displaying map: {e}")
